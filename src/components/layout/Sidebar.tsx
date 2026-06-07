@@ -3,7 +3,7 @@
  * Mobile: slides in from left with overlay, closes on navigation.
  */
 import { NavLink } from 'react-router-dom';
-import { Home, Settings, Wand2, BookOpen, MessageCircle, PenTool, X, ScrollText } from 'lucide-react';
+import { Home, Settings, Wand2, BookOpen, MessageCircle, PenTool, X, ScrollText, FileSearch } from 'lucide-react';
 import { BackgroundChanger } from '../shared/BackgroundChanger';
 import { ThemeSettings } from '../shared/ThemeSettings';
 
@@ -19,6 +19,7 @@ const navItems = [
   { to: '/library', label: '卡片库', icon: BookOpen },
   { to: '/chat', label: '测试对话', icon: MessageCircle },
   { to: '/dialogue', label: 'AI 创作助手', icon: PenTool },
+  { to: '/novel-analysis', label: '小说分析', icon: FileSearch },
   { to: '/settings', label: 'API 设置', icon: Settings },
 ];
 

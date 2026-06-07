@@ -12,6 +12,7 @@ import { ChatPage } from './pages/ChatPage';
 import { DialogueCreator } from './pages/DialogueCreator';
 import { SettingsPage } from './pages/SettingsPage';
 import { PresetPage } from './pages/PresetPage';
+import { NovelAnalysisPage } from './pages/NovelAnalysisPage';
 import { ToastProvider } from './components/shared/Toast';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { initBackground } from './services/background-service';
@@ -36,6 +37,7 @@ export default function App() {
             <Route path="/library" element={<LibraryPage />} />
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/dialogue" element={<DialogueCreator />} />
+            <Route path="/novel-analysis" element={<NovelAnalysisPage />} />
             <Route path="/preset" element={<PresetPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
