@@ -18,8 +18,8 @@
 - [x] Dich noi dung tieng Trung sang tieng Viet.
 - [x] Quet lai de dam bao khong con ky tu Trung.
 - [x] Build/test.
-- [ ] Cau hinh remote dich va push.
-- [ ] Deploy Vercel.
+- [x] Cau hinh remote dich va push.
+- [x] Deploy Vercel.
 
 ## Ghi chu dich thuat
 - Khong dich cac cum tieng Anh, ten bien, package, command, URL.
@@ -35,3 +35,5 @@
 - 2026-06-09: `rg "[\p{Han}]"` va quet ten file deu khong con ket qua.
 - 2026-06-09: Da sua cac cho dich may bi dinh chu quanh `{...}` va mot so cum sai nghia nhu nut "Ap dung", "Bo qua", "Xoa".
 - 2026-06-09: `npm run build` thanh cong; chi con canh bao chunk lon cua Vite/Rolldown.
+- 2026-06-09: Da push len `https://github.com/abcxyzeric/silly-tavern-tao-dich-card.git`.
+- 2026-06-09: Da deploy production Vercel: `https://silly-tavern-tao-dich-card.vercel.app`; kiem tra trang chinh HTTP 200 va `/api/health` tra `{"status":"ok"}`.
