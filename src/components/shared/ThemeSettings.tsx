@@ -2,300 +2,239 @@
  * ThemeSettings - UI customization panel for theme options.
  * Allows adjusting opacity, colors, blur, text color, shadows, etc.
  */
-import { useState } from 'react';
-import {
-  getThemeSettings,
-  saveThemeSettings,
-  resetTheme,
-  COLOR_PRESETS,
-  TEXT_COLOR_PRESETS,
-  TEXT_SHADOW_COLOR_PRESETS,
-  INPUT_BG_PRESETS,
-  INPUT_BORDER_PRESETS,
-  type ThemeSettings as ThemeSettingsType,
-} from '../../services/theme-service';
-import { getStoredBackground, applyBackground } from '../../services/background-service';
+import {useState} from 'react';
+import {getThemeSettings,
+ saveThemeSettings,
+ resetTheme,
+ COLOR_PRESETS,
+ TEXT_COLOR_PRESETS,
+ TEXT_SHADOW_COLOR_PRESETS,
+ INPUT_BG_PRESETS,
+ INPUT_BORDER_PRESETS,
+ type ThemeSettings as ThemeSettingsType,} from '../../services/theme-service';
+import {getStoredBackground, applyBackground} from '../../services/background-service';
 
-export function ThemeSettings({ sidebarOpen }: { sidebarOpen?: boolean }) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [sectionAppearance, setSectionAppearance] = useState(true);
-  const [sectionText, setSectionText] = useState(false);
+export function ThemeSettings({sidebarOpen}: {sidebarOpen?: boolean}) {const [isExpanded, setIsExpanded] = useState(false);
+ const [sectionAppearance, setSectionAppearance] = useState(true);
+ const [sectionText, setSectionText] = useState(false);
 
-  // 移动端关闭侧栏时，自动收起外观面板
-  const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
-  const effectiveExpanded = isMobile && sidebarOpen === false ? false : isExpanded;
-  const [settings, setSettings] = useState<ThemeSettingsType>(() => getThemeSettings());
+ //Khi thanh bên bị đóng trên thiết bị đầu cuối di động, bảng giao diện sẽ tự động được thu gọn
+ const isMobile = typeof window!== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
+ const effectiveExpanded = isMobile && sidebarOpen === false? false: isExpanded;
+ const [settings, setSettings] = useState<ThemeSettingsType>(() => getThemeSettings());
 
-  const handleUpdate = (patch: Partial<ThemeSettingsType>) => {
-    const updated = saveThemeSettings(patch);
-    setSettings(updated);
-    if ('bgOverlayOpacity' in patch) {
-      applyBackground(getStoredBackground());
-    }
-  };
+ const handleUpdate = (patch: Partial<ThemeSettingsType>) => {const updated = saveThemeSettings(patch);
+ setSettings(updated);
+ if ('bgOverlayOpacity' in patch) {applyBackground(getStoredBackground());}};
 
-  const handleReset = () => {
-    const reset = resetTheme();
-    setSettings(reset);
-    applyBackground(getStoredBackground());
-  };
+ const handleReset = () => {const reset = resetTheme();
+ setSettings(reset);
+ applyBackground(getStoredBackground());};
 
-  return (
-    <div className="relative">
-      {/* Toggle button */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-2 py-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors"
-        title="UI 设置"
-      >
-        <span className="flex items-center gap-1.5">
-          ⚙️ 外观
-        </span>
-        <span className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
-          ▾
-        </span>
-      </button>
+ return (<div className="relative">
+ {/* Toggle button */}
+ <button
+ onClick={() => setIsExpanded(!isExpanded)}
+ className="w-full flex items-center justify-between px-2 py-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+ title="cài đặt giao diện người dùng"
+ >
+ <span className="flex items-center gap-1.5">⚙️ Ngoại hình</span>
+ <span className={`transition-transform ${isExpanded? 'rotate-180': ''}`}>
+ ▾
+ </span>
+ </button>
 
-      {/* Expanded settings panel */}
-      {effectiveExpanded && (
-        <div className="absolute bottom-full left-0 right-0 mb-1 p-3 bg-slate-800/95 backdrop-blur-sm border border-slate-700 rounded-lg shadow-lg w-64 max-h-[70vh] overflow-y-auto">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-slate-300">外观设置</span>
-            <button
-              onClick={() => setIsExpanded(false)}
-              className="p-0.5 rounded text-slate-500 hover:text-white hover:bg-slate-700 transition-colors"
-              title="关闭"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
-          <div className="space-y-3">
-            {/* Section 1: Appearance */}
-            <div>
-              <button
-                onClick={() => setSectionAppearance(!sectionAppearance)}
-                className="w-full flex items-center justify-between text-xs text-slate-300 hover:text-white transition-colors mb-2"
-              >
-                <span className="font-medium">🎨 外观</span>
-                <span className={`text-[10px] transition-transform ${sectionAppearance ? 'rotate-180' : ''}`}>▾</span>
-              </button>
-              {sectionAppearance && (
-                <div className="space-y-3">
-                  {/* Primary Color */}
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1.5">主题颜色</label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {COLOR_PRESETS.map((preset) => (
-                        <button
-                          key={preset.value}
-                          onClick={() => handleUpdate({ primaryColor: preset.value })}
-                          className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${
-                            settings.primaryColor === preset.value
-                              ? 'border-white scale-110'
-                              : 'border-transparent'
-                          }`}
-                          style={{ backgroundColor: preset.value }}
-                          title={preset.name}
-                        />
-                      ))}
-                    </div>
-                  </div>
+ {/* Expanded settings panel */}
+ {effectiveExpanded && (<div className="absolute bottom-full left-0 right-0 mb-1 p-3 bg-slate-800/95 backdrop-blur-sm border border-slate-700 rounded-lg shadow-lg w-64 max-h-[70vh] overflow-y-auto">
+ <div className="flex items-center justify-between mb-3">
+ <span className="text-xs font-medium text-slate-300">Cài đặt giao diện</span>
+ <button
+ onClick={() => setIsExpanded(false)}
+ className="p-0.5 rounded text-slate-500 hover:text-white hover:bg-slate-700 transition-colors"
+ title="đóng cửa"
+ >
+ <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+ <line x1="18" y1="6" x2="6" y2="18" />
+ <line x1="6" y1="6" x2="18" y2="18" />
+ </svg>
+ </button>
+ </div>
+ <div className="space-y-3">
+ {/* Section 1: Appearance */}
+ <div>
+ <button
+ onClick={() => setSectionAppearance(!sectionAppearance)}
+ className="w-full flex items-center justify-between text-xs text-slate-300 hover:text-white transition-colors mb-2"
+ >
+ <span className="font-medium">🎨 Ngoại hình</span>
+ <span className={`text-[10px] transition-transform ${sectionAppearance? 'rotate-180': ''}`}>▾</span>
+ </button>
+ {sectionAppearance && (<div className="space-y-3">
+ {/* Primary Color */}
+ <div>
+ <label className="block text-xs text-slate-400 mb-1.5">màu chủ đề</label>
+ <div className="flex flex-wrap gap-1.5">
+ {COLOR_PRESETS.map((preset) => (<button
+ key={preset.value}
+ onClick={() => handleUpdate({primaryColor: preset.value})}
+ className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${settings.primaryColor === preset.value? 'border-white scale-110': 'border-transparent'}`}
+ style={{backgroundColor: preset.value}}
+ title={preset.name}
+ />))}
+ </div>
+ </div>
 
-                  {/* Background Overlay Opacity */}
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">
-                      背景遮罩: {settings.bgOverlayOpacity}%
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={settings.bgOverlayOpacity}
-                      onChange={(e) => handleUpdate({ bgOverlayOpacity: parseInt(e.target.value) })}
-                      className="w-full"
-                    />
-                  </div>
+ {/* Background Overlay Opacity */}
+ <div>
+ <label className="block text-xs text-slate-400 mb-1">Mặt nạ nền:{settings.bgOverlayOpacity}%
+ </label>
+ <input
+ type="range"
+ min="0"
+ max="100"
+ value={settings.bgOverlayOpacity}
+ onChange={(e) => handleUpdate({bgOverlayOpacity: parseInt(e.target.value)})}
+ className="w-full"
+ />
+ </div>
 
-                  {/* Surface Opacity */}
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">
-                      卡片透明度: {settings.surfaceOpacity}%
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={settings.surfaceOpacity}
-                      onChange={(e) => handleUpdate({ surfaceOpacity: parseInt(e.target.value) })}
-                      className="w-full"
-                    />
-                  </div>
+ {/* Surface Opacity */}
+ <div>
+ <label className="block text-xs text-slate-400 mb-1">Tính minh bạch của thẻ:{settings.surfaceOpacity}%
+ </label>
+ <input
+ type="range"
+ min="0"
+ max="100"
+ value={settings.surfaceOpacity}
+ onChange={(e) => handleUpdate({surfaceOpacity: parseInt(e.target.value)})}
+ className="w-full"
+ />
+ </div>
 
-                  {/* Blur Intensity */}
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">
-                      模糊强度: {settings.blurIntensity}px
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="20"
-                      value={settings.blurIntensity}
-                      onChange={(e) => handleUpdate({ blurIntensity: parseInt(e.target.value) })}
-                      className="w-full"
-                    />
-                  </div>
+ {/* Blur Intensity */}
+ <div>
+ <label className="block text-xs text-slate-400 mb-1">Cường độ mờ:{settings.blurIntensity} px
+ </label>
+ <input
+ type="range"
+ min="0"
+ max="20"
+ value={settings.blurIntensity}
+ onChange={(e) => handleUpdate({blurIntensity: parseInt(e.target.value)})}
+ className="w-full"
+ />
+ </div>
 
-                  {/* Card Shadow */}
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">
-                      卡片阴影: {settings.cardShadow}
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="20"
-                      value={settings.cardShadow}
-                      onChange={(e) => handleUpdate({ cardShadow: parseInt(e.target.value) })}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
+ {/* Card Shadow */}
+ <div>
+ <label className="block text-xs text-slate-400 mb-1">Bóng thẻ:{settings.cardShadow}
+ </label>
+ <input
+ type="range"
+ min="0"
+ max="20"
+ value={settings.cardShadow}
+ onChange={(e) => handleUpdate({cardShadow: parseInt(e.target.value)})}
+ className="w-full"
+ />
+ </div>
+ </div>)}
+ </div>
 
-            {/* Divider */}
-            <div className="border-t border-slate-700/50" />
+ {/* Divider */}
+ <div className="border-t border-slate-700/50" />
 
-            {/* Section 2: Text & Input */}
-            <div>
-              <button
-                onClick={() => setSectionText(!sectionText)}
-                className="w-full flex items-center justify-between text-xs text-slate-300 hover:text-white transition-colors mb-2"
-              >
-                <span className="font-medium">✏️ 文字与输入框</span>
-                <span className={`text-[10px] transition-transform ${sectionText ? 'rotate-180' : ''}`}>▾</span>
-              </button>
-              {sectionText && (
-                <div className="space-y-3">
-                  {/* Text Color */}
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1.5">文字颜色</label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {TEXT_COLOR_PRESETS.map((preset) => (
-                        <button
-                          key={preset.value}
-                          onClick={() => handleUpdate({ textColor: preset.value })}
-                          className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${
-                            settings.textColor === preset.value
-                              ? 'border-indigo-400 scale-110'
-                              : 'border-slate-600'
-                          }`}
-                          style={{ backgroundColor: preset.value }}
-                          title={preset.name}
-                        />
-                      ))}
-                    </div>
-                  </div>
+ {/* Section 2: Text & Input */}
+ <div>
+ <button
+ onClick={() => setSectionText(!sectionText)}
+ className="w-full flex items-center justify-between text-xs text-slate-300 hover:text-white transition-colors mb-2"
+ >
+ <span className="font-medium">✏️ Hộp văn bản và nhập liệu</span>
+ <span className={`text-[10px] transition-transform ${sectionText? 'rotate-180': ''}`}>▾</span>
+ </button>
+ {sectionText && (<div className="space-y-3">
+ {/* Text Color */}
+ <div>
+ <label className="block text-xs text-slate-400 mb-1.5">màu văn bản</label>
+ <div className="flex flex-wrap gap-1.5">
+ {TEXT_COLOR_PRESETS.map((preset) => (<button
+ key={preset.value}
+ onClick={() => handleUpdate({textColor: preset.value})}
+ className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${settings.textColor === preset.value? 'border-indigo-400 scale-110': 'border-slate-600'}`}
+ style={{backgroundColor: preset.value}}
+ title={preset.name}
+ />))}
+ </div>
+ </div>
 
-                  {/* Text Shadow */}
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">
-                      文字阴影: {settings.textShadow}
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="10"
-                      value={settings.textShadow}
-                      onChange={(e) => handleUpdate({ textShadow: parseInt(e.target.value) })}
-                      className="w-full"
-                    />
-                  </div>
+ {/* Text Shadow */}
+ <div>
+ <label className="block text-xs text-slate-400 mb-1">Bóng văn bản:{settings.textShadow}
+ </label>
+ <input
+ type="range"
+ min="0"
+ max="10"
+ value={settings.textShadow}
+ onChange={(e) => handleUpdate({textShadow: parseInt(e.target.value)})}
+ className="w-full"
+ />
+ </div>
 
-                  {/* Text Shadow Color */}
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1.5">阴影颜色</label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {TEXT_SHADOW_COLOR_PRESETS.map((preset) => (
-                        <button
-                          key={preset.value}
-                          onClick={() => handleUpdate({ textShadowColor: preset.value })}
-                          className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${
-                            settings.textShadowColor === preset.value
-                              ? 'border-white scale-110'
-                              : 'border-slate-600'
-                          }`}
-                          style={{ backgroundColor: preset.value }}
-                          title={preset.name}
-                        />
-                      ))}
-                    </div>
-                  </div>
+ {/* Text Shadow Color */}
+ <div>
+ <label className="block text-xs text-slate-400 mb-1.5">màu bóng</label>
+ <div className="flex flex-wrap gap-1.5">
+ {TEXT_SHADOW_COLOR_PRESETS.map((preset) => (<button
+ key={preset.value}
+ onClick={() => handleUpdate({textShadowColor: preset.value})}
+ className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${settings.textShadowColor === preset.value? 'border-white scale-110': 'border-slate-600'}`}
+ style={{backgroundColor: preset.value}}
+ title={preset.name}
+ />))}
+ </div>
+ </div>
 
-                  {/* Input Background Color */}
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1.5">输入框背景</label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {INPUT_BG_PRESETS.map((preset) => (
-                        <button
-                          key={preset.value}
-                          onClick={() => handleUpdate({ inputBgColor: preset.value })}
-                          className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${
-                            settings.inputBgColor === preset.value
-                              ? 'border-indigo-400 scale-110'
-                              : 'border-slate-600'
-                          }`}
-                          style={{ 
-                            backgroundColor: preset.value === 'transparent' ? undefined : preset.value,
-                            backgroundImage: preset.value === 'transparent' 
-                              ? 'linear-gradient(45deg, #666 25%, transparent 25%), linear-gradient(-45deg, #666 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #666 75%), linear-gradient(-45deg, transparent 75%, #666 75%)'
-                              : undefined,
-                            backgroundSize: preset.value === 'transparent' ? '4px 4px' : undefined,
-                            backgroundPosition: preset.value === 'transparent' ? '0 0, 0 2px, 2px -2px, -2px 0px' : undefined,
-                          }}
-                          title={preset.name}
-                        />
-                      ))}
-                    </div>
-                  </div>
+ {/* Input Background Color */}
+ <div>
+ <label className="block text-xs text-slate-400 mb-1.5">Nền hộp nhập liệu</label>
+ <div className="flex flex-wrap gap-1.5">
+ {INPUT_BG_PRESETS.map((preset) => (<button
+ key={preset.value}
+ onClick={() => handleUpdate({inputBgColor: preset.value})}
+ className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${settings.inputBgColor === preset.value? 'border-indigo-400 scale-110': 'border-slate-600'}`}
+ style={{backgroundColor: preset.value === 'transparent'? undefined: preset.value,
+ backgroundImage: preset.value === 'transparent'? 'linear-gradient(45deg, #666 25%, transparent 25%), linear-gradient(-45deg, #666 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #666 75%), linear-gradient(-45deg, transparent 75%, #666 75%)': undefined,
+ backgroundSize: preset.value === 'transparent'? '4px 4px': undefined,
+ backgroundPosition: preset.value === 'transparent'? '0 0, 0 2px, 2px -2px, -2px 0px': undefined,}}
+ title={preset.name}
+ />))}
+ </div>
+ </div>
 
-                  {/* Input Border Color */}
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1.5">输入框边框</label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {INPUT_BORDER_PRESETS.map((preset) => (
-                        <button
-                          key={preset.value}
-                          onClick={() => handleUpdate({ inputBorderColor: preset.value })}
-                          className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${
-                            settings.inputBorderColor === preset.value
-                              ? 'border-white scale-110'
-                              : 'border-slate-600'
-                          }`}
-                          style={{ backgroundColor: preset.value === 'auto' ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : preset.value }}
-                          title={preset.name}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+ {/* Input Border Color */}
+ <div>
+ <label className="block text-xs text-slate-400 mb-1.5">Đường viền hộp nhập liệu</label>
+ <div className="flex flex-wrap gap-1.5">
+ {INPUT_BORDER_PRESETS.map((preset) => (<button
+ key={preset.value}
+ onClick={() => handleUpdate({inputBorderColor: preset.value})}
+ className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${settings.inputBorderColor === preset.value? 'border-white scale-110': 'border-slate-600'}`}
+ style={{backgroundColor: preset.value === 'auto'? 'linear-gradient(135deg, #6366f1, #8b5cf6)': preset.value}}
+ title={preset.name}
+ />))}
+ </div>
+ </div>
+ </div>)}
+ </div>
 
-            {/* Reset button */}
-            <button
-              onClick={handleReset}
-              className="w-full px-2 py-1.5 text-xs text-slate-400 hover:text-slate-200 bg-slate-700/50 hover:bg-slate-700 rounded transition-colors"
-            >
-              🔄 恢复默认
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+ {/* Reset button */}
+ <button
+ onClick={handleReset}
+ className="w-full px-2 py-1.5 text-xs text-slate-400 hover:text-slate-200 bg-slate-700/50 hover:bg-slate-700 rounded transition-colors"
+ >🔄 Khôi phục mặc định</button>
+ </div>
+ </div>)}
+ </div>);}

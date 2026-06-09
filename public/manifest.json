@@ -1,30 +1,21 @@
-{
-  "name": "吟游手册 — AI 角色卡创作工具",
-  "short_name": "吟游手册",
-  "description": "创建、管理和测试 SillyTavern AI 角色卡。分步向导构建卡片，AI 辅助生成内容。",
-  "start_url": "/",
-  "display": "standalone",
-  "orientation": "any",
-  "theme_color": "#0f172a",
-  "background_color": "#0f172a",
-  "lang": "zh-CN",
-  "categories": ["utilities", "entertainment"],
-  "icons": [
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ]
-}
+{"name": "Silly Tavern Tạo Dịch Card",
+ "short_name": "Tạo Dịch Card",
+ "description": "Tạo, quản lý và kiểm tra card nhân vật AI SillyTavern. Trình hướng dẫn từng bước giúp tạo nội dung bằng AI.",
+ "start_url": "/",
+ "display": "standalone",
+ "orientation": "any",
+ "theme_color": "#0f172a",
+ "background_color": "#0f172a",
+ "lang": "vi",
+ "categories": ["utilities",
+ "entertainment"],
+ "icons": [{"src": "/icon-192.png",
+ "sizes": "192x192",
+ "type": "image/png"},
+ {"src": "/icon-512.png",
+ "sizes": "512x512",
+ "type": "image/png"},
+ {"src": "/icon-512.png",
+ "sizes": "512x512",
+ "type": "image/png",
+ "purpose": "maskable"}]}

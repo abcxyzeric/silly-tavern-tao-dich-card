@@ -1,8 +1,10 @@
 Set ws = CreateObject("WScript.Shell")
 desktopPath = ws.SpecialFolders("Desktop")
-Set sc = ws.CreateShortcut(desktopPath & "\Tavern Card Helper.lnk")
-sc.TargetPath = "d:\叶\Documents\AI work\tavern-card-helper\启动.bat"
-sc.WorkingDirectory = "d:\叶\Documents\AI work\tavern-card-helper"
-sc.Description = "Tavern Card Helper"
+Set fso = CreateObject("Scripting.FileSystemObject")
+scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
+Set sc = ws.CreateShortcut(desktopPath & "\Silly Tavern Tao Dich Card.lnk")
+sc.TargetPath = scriptDir & "\khoi-dong.bat"
+sc.WorkingDirectory = scriptDir
+sc.Description = "Silly Tavern Tao Dich Card"
 sc.Save
 WScript.Echo "Desktop shortcut created!"

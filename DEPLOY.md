@@ -1,140 +1,136 @@
-# 吟游手册 - 部署指南
+# Hướng dẫn sử dụng Bardic - Hướng dẫn triển khai
 
-## 方案一：Vercel 免费部署（推荐）
+## Tùy chọn 1: Triển khai miễn phí Vercel (khuyến nghị)
 
-免费、自动 HTTPS、全球 CDN、零运维。
+HTTPS miễn phí, tự động, CDN toàn cầu, không cần vận hành và bảo trì.
 
-### 部署步骤
+### Các bước triển khai
 
-1. 将代码推送到 GitHub（或 GitLab / Bitbucket）
+1. Đẩy mã lên GitHub (hoặc GitLab/Bitbucket)
 
-2. 打开 [vercel.com/new](https://vercel.com/new)，导入你的仓库
+2. Mở [vercel.com/new](https://vercel.com/new) và nhập kho của bạn
 
-3. Vercel 会自动检测配置，直接点 **Deploy** 即可
+3. Vercel sẽ tự động phát hiện cấu hình, chỉ cần nhấp vào **Triển khai**
 
-4. 部署完成后会给你一个 `xxx.vercel.app` 域名，分享给别人即可使用
+4. Sau khi quá trình triển khai hoàn tất, bạn sẽ được cấp một tên miền `xxx.vercel.app`, tên miền này có thể được sử dụng bằng cách chia sẻ nó với những người khác.
 
-### 代码更新
+### Cập nhật mã
 
-每次 push 到 GitHub 主分支，Vercel 会自动重新部署，无需手动操作。
+Mỗi khi bạn đẩy tới nhánh chính GitHub, Vercel sẽ tự động triển khai lại mà không cần thao tác thủ công.
 
-### 绑定自定义域名（可选）
+### Liên kết tên miền tùy chỉnh (tùy chọn)
 
-在 Vercel 项目设置 → Domains 中添加你的域名，按提示配置 DNS 即可。
+Thêm tên miền của bạn vào Cài đặt dự án Vercel → Tên miền và làm theo lời nhắc để định cấu hình DNS.
 
-### 免费额度
+### Hạn ngạch miễn phí
 
-- 无限静态请求
-- Serverless 函数调用：100GB-hours/月
-- 单次函数执行最长 60 秒
-- 自动 HTTPS
-- 全球 CDN
+- Yêu cầu tĩnh không giới hạn
+- Gọi chức năng serverless: 100 GB-giờ/tháng
+-Một lần thực hiện chức năng duy nhất kéo dài tới 60 giây
+- HTTPS tự động
+- CDN toàn cầu
 
 ---
 
-## 方案二：Docker 部署
+## Tùy chọn 2: Triển khai Docker
 
-### 前提条件
-- 服务器安装 Docker 和 Docker Compose
+### Điều kiện tiên quyết
+- Cài đặt máy chủ Docker và Docker Compose
 
-### 部署步骤
+### Các bước triển khai
 
-1. 将项目上传到服务器
+1. Tải dự án lên máy chủ
 
-2. 构建并启动：
+2. Xây dựng và bắt đầu:
 ```bash
 docker compose up -d --build
 ```
 
-3. 访问 `http://你的服务器IP:3001`
+3. Truy cập `http://IP máy chủ của bạn:3001`
 
-### 常用命令
+### Các lệnh thông dụng
 ```bash
-# 查看日志
+# Xem nhật ký
 docker compose logs -f
 
-# 停止服务
+#ngừng dịch vụ
 docker compose down
 
-# 重新构建（代码更新后）
+# Xây dựng lại (sau khi cập nhật mã)
 docker compose up -d --build
 ```
 
 ---
 
-## 方案三：直接部署
+## Phương án 3: Triển khai trực tiếp
 
-### 前提条件
-- 服务器安装 Node.js 18+
+### Điều kiện tiên quyết
+- Cài đặt máy chủ Node.js 18+
 
-### 部署步骤
+### Các bước triển khai
 
-1. 上传项目到服务器
+1. Tải dự án lên máy chủ
 
-2. 安装依赖并构建：
+2. Cài đặt và xây dựng các phụ thuộc:
 ```bash
 npm ci
 npx vite build
 ```
 
-3. 启动服务：
+3. Bắt đầu dịch vụ:
 ```bash
-# 前台运行
+# Chạy ở phía trước
 npm start
 
-# 或使用 PM2 后台运行（推荐）
+# Hoặc sử dụng PM2 để chạy ở chế độ nền (khuyến nghị)
 npm install -g pm2
 pm2 start server/index.js --name tavern-helper
 pm2 save
 pm2 startup
 ```
 
-4. 访问 `http://你的服务器IP:3001`
+4. Truy cập `http://IP máy chủ của bạn:3001`
 
 ---
 
-## 方案四：Nginx 反向代理 + HTTPS
+## Giải pháp 4: Proxy ngược Nginx + HTTPS
 
-适合有域名的场景：
+Thích hợp cho các tình huống với tên miền:
 
 ```nginx
-server {
-    listen 443 ssl;
-    server_name your-domain.com;
+server {listen 443 ssl;
+ server_name your-domain.com;
 
-    ssl_certificate     /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
+ ssl_certificate /path/to/cert.pem;
+ ssl_certificate_key /path/to/key.pem;
 
-    location / {
-        proxy_pass http://127.0.0.1:3001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
+ location / {proxy_pass http://127.0.0.1:3001;
+ proxy_http_version 1.1;
+ proxy_set_header Upgrade $http_upgrade;
+ proxy_set_header Connection "upgrade";
+ proxy_set_header Host $host;
+ proxy_set_header X-Real-IP $remote_addr;
 
-        # SSE 流式传输必须关闭缓冲
-        proxy_buffering off;
-        proxy_cache off;
-        proxy_read_timeout 300s;
-    }
-}
+# Phát trực tuyến SSE phải tắt tính năng đệm
+ proxy_buffering off;
+ proxy_cache off;
+ proxy_read_timeout 300s;}}
 ```
 
 ---
 
-## 环境变量
+## Biến môi trường
 
-| 变量 | 默认值 | 说明 |
+| biến | giá trị mặc định | mô tả |
 |------|--------|------|
-| PORT | 3001 | 服务端口 |
-| HOST | 0.0.0.0 | 监听地址 |
-| CORS_ORIGINS | (允许全部) | 允许的域名，逗号分隔 |
+| CẢNG | 3001 | Cảng dịch vụ |
+| CHỦ | 0.0.0.0 | Địa chỉ nghe |
+| CORS_ORIGINS | (đã bật tất cả) | Tên miền được phép, phân tách bằng dấu phẩy |
 
 ---
 
-## 注意事项
+## Ghi chú
 
-1. **数据存储在浏览器**：用户数据保存在各自浏览器的 IndexedDB 中，不同设备/浏览器之间数据不互通
-2. **API Key 由用户提供**：服务器只做 CORS 代理转发，不存储任何 API Key
-3. **HTTPS 建议**：Vercel 自带 HTTPS；自建服务器建议配置 SSL
+1. **Dữ liệu được lưu trữ trong trình duyệt**: Dữ liệu người dùng được lưu trữ trong IndexedDB của mỗi trình duyệt và dữ liệu không thể tương tác giữa các thiết bị/trình duyệt khác nhau.
+2. **Khóa API do người dùng cung cấp**: Máy chủ chỉ thực hiện chuyển tiếp proxy CORS và không lưu trữ bất kỳ Khóa API nào.
+3. **Khuyến nghị về HTTPS**: Vercel đi kèm với HTTPS; nên định cấu hình SSL cho các máy chủ tự xây dựng.

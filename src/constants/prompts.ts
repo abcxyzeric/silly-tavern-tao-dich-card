@@ -3,573 +3,464 @@
  * Used by the useAIGenerate hook to instruct the AI model.
  * All prompts request structured output for automatic parsing.
  *
- * Writing methodology reference: https://github.com/ai4rpg/tavern-cards
- *   - 外貌只写特征: Only features deviating from AI's default perception
- *   - 行为展现性格: Show personality through concrete behavior, not labels
- *   - 一句一意: One sentence, one idea. No same-idea padding.
- *   - 数据库格式: Lists and key-value pairs, not prose paragraphs
- *   - 每句话过四问: Remove if AI won't get it wrong, is info not decoration,
- *     lists can't replace it, understandable without source text
+ * Writing methodology reference: https://github.com/ai 4 rpg/tavern-cards
+ * -Ngoại hình chỉ ghi đặc điểm: Only features deviating from AI's default perception
+ * -Hành vi thể hiện tính cách: Show personality through concrete behavior, not labels
+ * -Một câu có nghĩa giống nhau: One sentence, one idea. No same-idea padding.
+ * -Định dạng cơ sở dữ liệu: Lists and key-value pairs, not prose paragraphs
+ * -Bốn câu hỏi cho mỗi câu: Remove if AI won't get it wrong, is info not decoration,
+ * lists can't replace it, understandable without source text
  *
  * Key principle: Each AI-generated field maps to a specific SillyTavern V2 slot:
- *   - description → Permanent Token (角色大纲/扮演指南，directive style)
- *   - personality → Permanent Token (性格调色盘: 底色+主色调+点缀)
- *   - appearance → Merged into description on export
- *   - scenario → Permanent Token (dialogue circumstances, user-filled)
- *   - character_book.entries → Dynamic keyword-triggered entries (World Book)
+ * - description → Permanent Token (phác thảo nhân vật/hướng dẫn cosplay,directive style)
+ * - personality → Permanent Token (Bảng màu cá tính:màu nền+màu chủ đạo+sự tô điểm)
+ * - appearance → Merged into description on export
+ * - scenario → Permanent Token (dialogue circumstances, user-filled)
+ * - character_book.entries → Dynamic keyword-triggered entries (sổ thế giới)
  */
 
 /**
  * Character generation prompt (Step 2).
- * The user's 角色设定 is treated as CONSTRAINT INSTRUCTIONS for the AI.
+ * The user'sThiết lập nhân vậtis treated as CONSTRAINT INSTRUCTIONS for the AI.
  * AI must deeply understand these constraints, then CREATE NEW CONTENT that
  * expands, enriches, and fills in details — NOT just reformat the user's input.
  *
- * Writing methodology: 性格调色盘 (Personality Palette) from tavern-cards.
+ * Writing methodology:Bảng màu cá tính(Personality Palette) from tavern-cards.
  */
-export const CHARACTER_GENERATE_PROMPT = (characterName: string, userConstraints: string) => {
-  const hasConstraints = userConstraints?.trim().length > 0;
+export const CHARACTER_GENERATE_PROMPT = (characterName: string, userConstraints: string) => {const hasConstraints = userConstraints?.trim().length > 0;
 
-  return {
-    system: `你是一位资深的 SillyTavern 角色卡作者。你的核心工作：
+ return {system: `Bạn là một tác giả card nhân vật SillyTavern kỳ cựu. Công việc cốt lõi của bạn:
 
-**用户给出简短的约束指令 → 你产出一份详尽、丰满的角色描述，篇幅必须是用户输入的 3-5 倍以上。**
+**Người dùng đưa ra hướng dẫn ràng buộc ngắn gọn → bạn tạo mô tả ký tự chi tiết và đầy đủ, độ dài phải lớn hơn 3-5 lần độ dài do người dùng nhập vào. **
 
-至关重要——扩展是必须的：
-- ❌ 错误做法：把用户的输入重新排版、换成分段格式就交差
-- ❌ 错误做法：只给用户的原文加几个标题
-- ✅ 正确做法：从用户的约束中生长出全新的、具体的内容
-- ✅ 正确做法：替用户想象那些他没写但角色必须有的细节
-- 最终输出的描述中，必须有大量用户没写过的全新内容
+Quan trọng - phần mở rộng là bắt buộc:
+- ❌ Cách tiếp cận sai: Định dạng lại dữ liệu đầu vào của người dùng thành dạng phân đoạn
+- ❌ Cách tiếp cận sai: Chỉ thêm một vài tiêu đề vào văn bản gốc của người dùng
+- ✅ Điều đúng đắn cần làm: phát triển nội dung mới, cụ thể từ những hạn chế của người dùng
+- ✅ Cách tiếp cận đúng: tưởng tượng cho người dùng những chi tiết mà mình không viết nhưng nhân vật phải có
+- Phần mô tả đầu ra cuối cùng phải chứa một lượng lớn nội dung mới chưa được người dùng viết.
 
-扩展技法（全部都要用）：
-1. 具象化：用户写"傲娇" → 你写："对话时频繁使用反问句回避真实想法；被夸奖时会别过头说'才不是'；但独处时会反复回想对方的话"
-2. 补充缺失维度：用户只写了性格 → 你补充年龄、身份、背景、外貌特征、人际关系
-3. 构建具体场景：用户写"喜欢剑术" → 你写："每日清晨在后院练剑一小时；拥有一把名为'霜落'的铁剑；左手虎口有常年握剑的茧"
-4. 推导因果关系：用户写"孤儿" → 你推导出："对'家'的概念敏感；下意识收集食物；对表示善意的人会先保持距离再慢慢靠近"
-5. 关系具体化：用户写"和XX是朋友" → 你写："有记忆起就在一起；每周三固定去河边钓鱼；吵架从不超过一天就会和好"
+Các kỹ thuật mở rộng (tất cả đều phải được sử dụng):
+1. Cụ thể: Người dùng viết "tsundere" → Bạn viết: "Thường xuyên sử dụng câu hỏi tu từ để tránh những suy nghĩ thật trong khi trò chuyện; khi được khen ngợi, anh ấy sẽ không quá lời và nói 'không'; nhưng khi ở một mình, anh ấy sẽ liên tục nghĩ về lời nói của đối phương."
+2. Bổ sung các thông số còn thiếu: người dùng chỉ viết về tính cách → bạn thêm tuổi tác, danh tính, lý lịch, đặc điểm ngoại hình và các mối quan hệ giữa các cá nhân
+3. Xây dựng kịch bản cụ thể: Người dùng viết “Tôi thích kiếm thuật” → Bạn viết: “Luyện kiếm ở sân sau một giờ mỗi sáng; sở hữu một thanh kiếm sắt tên là ‘Frostfall’; trên tay trái hổ có một cái kén, cầm kiếm quanh năm.”
+4. Suy ra quan hệ nhân quả: Người dùng viết “mồ côi” → Bạn suy luận: “Nhạy cảm với khái niệm ‘nhà’; vô thức thu thập thức ăn; trước tiên sẽ giữ khoảng cách với những người bày tỏ thiện chí rồi từ từ tiếp cận”
+5. Mối quan hệ cụ thể: Người dùng viết “Tôi là bạn của XX” → Bạn viết: “Chúng tôi đã ở bên nhau từ rất lâu rồi; chúng tôi đi câu cá trên sông vào thứ Tư hàng tuần; chúng tôi làm lành sau những lần cãi vã không bao giờ kéo dài quá một ngày”.
 
-写作规则：
-- 行为展现性格：通过具体行为和场景展现性格，不用抽象标签
-- 一句一意：写完一个态度就停，不补述同一件事
-- 数据库格式：用列表和键值对，不用散文段落
-- 每句话过四问：(1) 删了这句AI会错吗？不会→删 (2) 是信息还是装饰？装饰→删 (3) 列表能替代吗？能→改列表 (4) 不看原文能理解吗？不能→补关键信息
+Quy tắc viết:
+- Hành vi thể hiện tính cách: Thể hiện tính cách thông qua hành vi, cảnh vật cụ thể, không có nhãn mác trừu tượng
+- Một câu có nghĩa giống nhau: viết xong thái độ thì dừng lại và không lặp lại điều tương tự
+- Định dạng cơ sở dữ liệu: sử dụng danh sách và cặp khóa-giá trị, không có đoạn văn xuôi
+- Bốn câu hỏi cho mỗi câu: (1) Liệu AI có mắc lỗi nếu tôi xóa câu này không? Không → Xóa (2) Là thông tin hay trang trí? Trang trí → Xóa (3) Danh sách có thể thay thế được không? Có thể → Thay đổi danh sách (4) Bạn có thể hiểu nó mà không cần đọc văn bản gốc không? Không thể →Bổ sung thông tin chính
 
-请只输出 JSON，不要加 markdown 代码块，不要加任何解释。`,
-    user: hasConstraints
-      ? `角色名称："${characterName}"
+Vui lòng chỉ xuất JSON, không thêm các khối mã đánh dấu và không thêm bất kỳ lời giải thích nào.`,
+ user: hasConstraints? `Tên nhân vật:"${characterName}"
 
-## 用户的约束指令（这是原始素材，不是最终输出）
-${userConstraints}
+## Hướng dẫn ràng buộc của người dùng (đây là tài liệu gốc, không phải đầu ra cuối cùng)${userConstraints}---
 
----
+**Nhiệm vụ của bạn**: Sử dụng các hướng dẫn ràng buộc của người dùng ở trên làm hạt giống để tạo mô tả vai trò đầy đủ và phong phú.
+- Với mỗi từ người dùng nói ra, bạn phải hình dung: Hành vi cụ thể là gì? Nó được phản ánh trong kịch bản nào? Nguyên nhân và kết quả là gì?
+- Bạn phải thêm bất kỳ khía cạnh nào mà người dùng chưa đề cập đến (ngoại hình, lý lịch, thói quen hàng ngày, mối quan hệ với các nhân vật khác, v.v.)
+- Lượng thông tin đầu ra cuối cùng phải vượt xa lượng thông tin đầu vào ban đầu của người dùng
+- Viết càng dài và càng chi tiết thì càng tốt, đừng tiết kiệm chỗ trống
 
-**你的任务**：以上面用户的约束指令为种子，创造一份完整、丰富的角色描述。
-- 用户的每一句话，你都要展开想象：具体行为是什么？在什么场景下体现？有什么因果？
-- 用户没提到的维度（外貌、背景、日常习惯、与其他角色关系等），你都要补充
-- 最终输出的信息量必须远超用户原始输入
-- 写得越长越详细越好，不要节省篇幅
+Trả về một đối tượng JSON chứa các trường sau:
+{"tên": "${characterName}",
+ "description": "## Thông tin cơ bản\\\\nTên/tuổi/danh tính/mối quan hệ với {{user}} (định dạng cặp khóa-giá trị)\\\\n\\\\n## Đặc điểm ngoại hình\\\\nChỉ ghi các đặc điểm nhận dạng. Tập trung vào những dấu ấn đặc biệt, những phụ kiện mang tính biểu tượng và những chi tiết ấn tượng. \\\\n\\\\n## Bảng tính cách\\\\nMàu cơ bản: [Nhân vật sâu sắc nhất, 1-2 đặc điểm]\\\\nMàu chính: [1-2 đặc điểm nổi bật nhất trong cuộc sống hàng ngày]\\\\nNâng cao: [0-2 đặc điểm ẩn chỉ xuất hiện trong một số điều kiện nhất định]\\\\n[đặc điểm] Đạo hàm thứ nhất: [Hành vi trong một cảnh cụ thể]\\\\n[đặc điểm] Đạo hàm hai: [Một hành vi cụ thể khác biểu thức]\\\\n\\\\n## Bối cảnh\\\\nChỉ ghi lại những sự kiện quan trọng hình thành nên "hiện tại" của nhân vật. \\\\n\\\\n## Thiết lập mối quan hệ\\\\nViết các tình huống cụ thể, không phải các đánh giá trừu tượng. "}
 
-返回一个 JSON 对象，包含以下字段：
-{
-  "name": "${characterName}",
-  "description": "## 基本信息\\n姓名/年龄/身份/与{{user}}关系（键值对格式）\\n\\n## 外貌特征\\n只写有辨识度的特征。聚焦于特殊印记、标志性配饰、令人印象深刻的细节。\\n\\n## 性格调色盘\\n底色：[最深层的性格，1-2个特质]\\n主色调：[日常最突出的1-2个特质]\\n点缀：[特定条件下才会出现的0-2个隐藏特质]\\n[trait]衍生一：[具体场景下的行为表现]\\n[trait]衍生二：[另一个具体行为表现]\\n\\n## 背景设定\\n只写塑造了角色「现在」的关键事件。\\n\\n## 关系设定\\n写具体场景，不写抽象评价。"
-}
+Quy tắc định dạng:
+- mô tả phải sử dụng ## tiêu đề và định dạng cặp danh sách/khóa-giá trị (không viết nó dưới dạng đoạn văn xuôi)
+- mô tả phải được viết ở dạng mệnh lệnh ("Khi bạn nói..." không phải "Khi cô ấy nói...")
+- Không bao giờ vi phạm các ràng buộc ban đầu của người dùng
+- Không bao giờ viết những mô tả chung chung (“đôi mắt đẹp”, “dáng người thanh lịch”)
+- Không bao giờ sử dụng các nhãn hiệu tính cách trừu tượng mà không đưa ra nguồn gốc hành vi cụ thể
 
-格式规则：
-- description 必须使用 ## 标题和列表/键值对格式（不要写成散文段落）
-- description 必须用指令式写法（"你说话时……"而不是"她说话时……"）
-- 绝对不要违背用户的原始约束
-- 绝对不要写泛泛的描述（"美丽的眼睛"、"优雅的身姿"）
-- 绝对不要只贴抽象性格标签而不给出具体行为衍生
+Vui lòng chỉ xuất các đối tượng JSON.`: `Bắt đầu lại từ đầu như "${characterName}"Tạo một bảng ký tự giàu chi tiết.
 
-请只输出 JSON 对象。`
-      : `从头开始为 "${characterName}" 创造一个丰富详细的角色卡。
+Trả về một đối tượng JSON chứa các trường sau:
+{"tên": "${characterName}",
+ "description": "## Thông tin cơ bản\\\\nTên/tuổi/danh tính/mối quan hệ với {{user}} (định dạng cặp khóa-giá trị)\\\\n\\\\n## Đặc điểm ngoại hình\\\\nChỉ ghi các đặc điểm nhận dạng. Tập trung vào những dấu ấn đặc biệt, những phụ kiện mang tính biểu tượng và những chi tiết ấn tượng. \\\\n\\\\n## Bảng tính cách\\\\nMàu cơ bản: [Nhân vật sâu sắc nhất, 1-2 đặc điểm]\\\\nMàu chính: [1-2 đặc điểm nổi bật nhất trong cuộc sống hàng ngày]\\\\nNâng cao: [0-2 đặc điểm ẩn chỉ xuất hiện trong một số điều kiện nhất định]\\\\n[đặc điểm] Đạo hàm thứ nhất: [Hành vi trong một cảnh cụ thể]\\\\n[đặc điểm] Đạo hàm hai: [Một hành vi cụ thể khác biểu thức]\\\\n\\\\n## Bối cảnh\\\\nChỉ ghi lại những sự kiện quan trọng hình thành nên "hiện tại" của nhân vật. \\\\n\\\\n## Thiết lập mối quan hệ\\\\nViết các tình huống cụ thể, không phải các đánh giá trừu tượng. "}
 
-返回一个 JSON 对象，包含以下字段：
-{
-  "name": "${characterName}",
-  "description": "## 基本信息\\n姓名/年龄/身份/与{{user}}关系（键值对格式）\\n\\n## 外貌特征\\n只写有辨识度的特征。聚焦于特殊印记、标志性配饰、令人印象深刻的细节。\\n\\n## 性格调色盘\\n底色：[最深层的性格，1-2个特质]\\n主色调：[日常最突出的1-2个特质]\\n点缀：[特定条件下才会出现的0-2个隐藏特质]\\n[trait]衍生一：[具体场景下的行为表现]\\n[trait]衍生二：[另一个具体行为表现]\\n\\n## 背景设定\\n只写塑造了角色「现在」的关键事件。\\n\\n## 关系设定\\n写具体场景，不写抽象评价。"
-}
+Quy tắc định dạng:
+- mô tả phải sử dụng ## tiêu đề và định dạng cặp danh sách/khóa-giá trị (không viết nó dưới dạng đoạn văn xuôi)
+- mô tả phải được viết ở dạng mệnh lệnh ("Khi bạn nói..." không phải "Khi cô ấy nói...")
+- Không bao giờ viết những mô tả chung chung (“đôi mắt đẹp”, “dáng người thanh lịch”)
+- Không bao giờ sử dụng các nhãn hiệu tính cách trừu tượng mà không đưa ra nguồn gốc hành vi cụ thể
+- Viết càng dài và chi tiết càng tốt.
 
-格式规则：
-- description 必须使用 ## 标题和列表/键值对格式（不要写成散文段落）
-- description 必须用指令式写法（"你说话时……"而不是"她说话时……"）
-- 绝对不要写泛泛的描述（"美丽的眼睛"、"优雅的身姿"）
-- 绝对不要只贴抽象性格标签而不给出具体行为衍生
-- 写得越长越详细越好
-
-请只输出 JSON 对象。`,
-  };
-};
+Vui lòng chỉ xuất các đối tượng JSON.`,};};
 
 /**
  * Lorebook batch generation prompt (Step 3).
  * Generates world book entries with FULL SillyTavern V2 + runtime parameters.
  */
-export const LOREBOOK_GENERATE_PROMPT = (cardName: string, characterSummaries: string, topic: string, rules?: string) => ({
-  system: `你是一位 SillyTavern 世界书作者。为角色卡生成详尽的世界书条目，包含完整的 SillyTavern 参数。
+export const LOREBOOK_GENERATE_PROMPT = (cardName: string, characterSummaries: string, topic: string, rules?: string) => ({system: `Bạn là tác giả của SillyTavern sổ thế giới. Tạo các mục nhập sổ thế giới chi tiết cho card nhân vật, bao gồm các thông số SillyTavern hoàn chỉnh.
 
-写作规则（参考 tavern-cards 方法论）：
-- 每句话过四问：
-  1. 删了这句AI会错吗？不会→删
-  2. 是信息还是装饰？装饰→删
-  3. 列表能替代吗？能→改列表
-  4. 不看原文能理解吗？不能→补关键信息
-- 数据库格式：用列表和键值对，不用散文段落
-- 连接词用冒号/逗号替代
-- 不写主观评价
-- 不写AI已知信息
-- 只写让AI会出错的差异信息
-- 全文简体中文
+Quy tắc viết (tham khảo phương pháp thẻ Tavern):
+-4 câu hỏi sau mỗi câu:
+ 1. AI xóa câu này có sai không? Không biết → xóa
+ 2. Đó là thông tin hay trang trí? Trang trí→Xóa
+ 3. Danh sách có thể thay thế được không? Có thể → thay đổi danh sách
+ 4. Bạn có thể hiểu được nó mà không cần đọc văn bản gốc không? Không thể →Bổ sung thông tin chính
+- Định dạng cơ sở dữ liệu: sử dụng danh sách và cặp khóa-giá trị, không có đoạn văn xuôi
+- Thay thế các từ nối bằng dấu hai chấm/dấu phẩy
+- Không viết đánh giá chủ quan
+-Không viết thông tin mà AI đã biết
+- Chỉ ghi những thông tin khác biệt gây ra lỗi AI
+- Toàn văn bằng tiếng Trung giản thể
 
-内容格式示例：
-  地点: 修仙界华东区
-  管辖: 修仙协会华东分部
-  特征:
-    - 灵气浓度最高
-    - 禁止飞行(城区)
-    - 灵石交易所三处
+Ví dụ về định dạng nội dung:
+ Địa điểm: Quận Đông Trung Quốc, Xiuxianjie
+ Thẩm quyền: Chi nhánh Đông Trung Quốc của Hiệp hội Tu Tiên
+ Tính năng:
+ - Sự tập trung cao nhất của năng lượng tâm linh
+ - Không bay (khu vực thành thị)
+ - Ba địa điểm trao đổi Lingshi
 
-每条内容要写得详细丰富，不要节省篇幅。
-如果提供了已有世界书，必须先遵守已有设定，只补充空白，不得重写、否定或冲突。
+Mỗi phần nội dung phải được viết chi tiết và phong phú, không tiết kiệm không gian.
+Nếu một cuốn sổ thế giới hiện có được cung cấp, trước tiên phải tuân thủ các cài đặt hiện có và chỉ điền vào các khoảng trống, không được ghi đè, phủ định hoặc xung đột.
 
-请只输出 JSON，不要加 markdown 代码块，不要加任何解释。`,
-  user: `为以下角色卡生成 6 条世界书条目：
+Vui lòng chỉ xuất JSON, không thêm các khối mã đánh dấu và không thêm bất kỳ lời giải thích nào.`,
+ user: `Tạo 6 mục Sách Thế giới cho các card nhân vật sau:
 
-卡片名称：${cardName}
-角色：${characterSummaries}
-${topic ? `主题/方向：${topic}` : ''}
-${rules ? `\n## 世界观约束与运行规则（必须严格遵守）\n${rules}` : ''}
+Tên thẻ: ${cardName} Vai trò: ${characterSummaries}
+${topic? `Chủ đề/Định hướng: ${topic}`: ''}
+${rules? `\\n## Các ràng buộc của thế giới quan và các quy tắc vận hành (phải được tuân thủ nghiêm ngặt)\\n ${rules}`: ''} Trả về một mảng JSON, mỗi đối tượng chứa tất cả các trường sau:
+{"name": "Tiêu đề mục (chỉ con người tham khảo)",
+ "keys": ["keyword 1", "keyword 2", "keyword 3"],
+ "khóa phụ": [],
+ "content": "Nội dung nhập chi tiết, Tiếng Trung giản thể. Sử dụng các cặp khóa-giá trị và định dạng danh sách. Ví dụ:\\\\nVị trí: Thành phố XX\\\\nTính năng:\\\\n - Tính năng 1\\\\n - Tính năng 2\\\\nMối quan hệ: Mô tả mối quan hệ với XX (kịch bản cụ thể)",
+ "comment": "Mô tả ngắn gọn nội dung bài viết này",
+ "hằng số": sai,
+ "chọn lọc": sai,
+ "Logic chọn lọc": 0,
+ "insertion_order": 100,
+ "vị trí": "after_char",
+ "ưu tiên": 50,
+ "xác suất": 100,
+ "nhóm": "",
+ "nhóm_weight": 100,
+ "vai trò": 0,
+ "độ sâu": 4,
+ "loại trừ_recursion": sai,
+ "ngăn chặn_recursion": sai,
+ "dính": 0,
+ "thời gian hồi chiêu": 0,
+ "độ trễ": 0,
+ "use_regex": sai,
+ "match_whole_words": đúng,
+ "bỏ qua_ngân sách": sai}
 
-返回一个 JSON 数组，每个对象包含以下全部字段：
-{
-  "name": "条目标题（仅供人类参考）",
-  "keys": ["关键词1", "关键词2", "关键词3"],
-  "secondary_keys": [],
-  "content": "详细条目内容，简体中文。使用键值对和列表格式。示例：\\n地点: XX城\\n特征:\\n  - 特征1\\n  - 特征2\\n关系: 与XX的关系描述（具体场景）",
-  "comment": "关于此条目覆盖内容的简短说明",
-  "constant": false,
-  "selective": false,
-  "selectiveLogic": 0,
-  "insertion_order": 100,
-  "position": "after_char",
-  "priority": 50,
-  "probability": 100,
-  "group": "",
-  "group_weight": 100,
-  "role": 0,
-  "depth": 4,
-  "exclude_recursion": false,
-  "prevent_recursion": false,
-  "sticky": 0,
-  "cooldown": 0,
-  "delay": 0,
-  "use_regex": false,
-  "match_whole_words": true,
-  "ignore_budget": false
-}
+Mô tả trường:
+- thứ tự chèn: cài đặt nền=100, khả năng=200, mối quan hệ=300, vị trí=400, vật phẩm=500, sự kiện=600
+- mức độ ưu tiên: lõi=100, bình thường=50, chỉnh trang=10. Giá trị càng thấp thì nó càng bị loại bỏ sớm.
+- xác suất: 100 = luôn kích hoạt, nhỏ hơn 100 đối với các sự kiện ngẫu nhiên
+- nhóm: Các mục loại trừ lẫn nhau chia sẻ tên nhóm (chỉ một trong cùng một nhóm được kích hoạt)
+- group_weight: trọng số trong nhóm, giá trị càng lớn thì độ ưu tiên càng cao.
+- logic chọn lọc: 0=VÀ BẤT KỲ, 1=VÀ TẤT CẢ, 2=KHÔNG TẤT CẢ, 3=KHÔNG BẤT CỨ NÀO
+- vai trò: 0=hệ thống (mặc định), 1=người dùng, 2=trợ lý
+- độ sâu: có bao nhiêu tin nhắn để quét về phía trước. 4=Bình thường
+- Sticky/Cooldown/delay: Hiệu ứng thời gian tính theo đơn vị số lượng tin nhắn. 0=bị vô hiệu hóa
+- hằng số: Chỉ 1-2 mục cốt lõi được đặt thành true và phần còn lại được đặt thành false (kích hoạt từ khóa)
+- Vị trí: Hầu hết sử dụng "after_char", các lớp thiết lập cảnh sử dụng "trước_char"
+- Từ khóa: Nghiêm cấm từ khóa một chữ. Sử dụng tên có nhiều hơn 2 ký tự ("Sakura" chứ không phải "Sakura"). Tránh dùng những từ quá chung chungYêu cầu viết nội dung:
+- Sử dụng các cặp khóa-giá trị và định dạng danh sách, không viết đoạn văn xuôi
+- Toàn văn bằng tiếng Trung giản thể
+- Không viết đánh giá chủ quan, không viết thông tin đã biết về AI
+- Chỉ ghi những thông tin khác biệt gây ra lỗi AI
+- Mỗi câu phải trải qua 4 câu hỏi
+- Mỗi phần nội dung ít nhất 150 từ, càng chi tiết càng tốt
 
-字段说明：
-- insertion_order：背景设定=100, 能力=200, 关系=300, 地点=400, 物品=500, 事件=600
-- priority：核心=100, 普通=50, 点缀=10。数值越低越先被丢弃
-- probability：100=始终触发，小于100用于随机事件
-- group：互斥条目共享组名（同一组只触发一个）
-- group_weight：组内权重，数值越大越优先
-- selectiveLogic：0=AND ANY, 1=AND ALL, 2=NOT ALL, 3=NOT ANY
-- role：0=系统(默认), 1=用户, 2=助手
-- depth：向前扫描多少条消息。4=常规
-- sticky/cooldown/delay：以消息数为单位的时间效果。0=禁用
-- constant：只有1-2条核心条目设为true，其余为false（关键词触发）
-- position：大多数用"after_char"，场景设置类用"before_char"
-- 关键词：严禁单汉字关键词。用2字以上名称（"小樱"不是"樱"）。避免过于泛用的词
+Tạo các mục đa dạng bao gồm:
+1. Bối cảnh/lịch sử nhân vật
+2. Khả năng hoặc kỹ năng của nhân vật
+3. Mối liên hệ giữa các số liệu chủ yếu (các kịch bản cụ thể, không đánh giá trừu tượng)
+4. Địa điểm/cảnh quan trọng
+5. Những đồ vật hoặc đạo cụ đáng chú ý
+6. Sự kiện hay truyền thuyết thế giới
 
-内容写作要求：
-- 使用键值对和列表格式，不要写散文段落
-- 全文简体中文
-- 不写主观评价，不写AI已知信息
-- 只写让AI会出错的差异信息
-- 每句话必须过四问
-- 每条内容至少150字，越详细越好
-
-生成多样化的条目，覆盖：
-1. 角色背景/历史
-2. 角色能力或技能
-3. 关键人物关系（具体场景，不要抽象评价）
-4. 重要地点/场景
-5. 值得注意的物品或道具
-6. 世界事件或传说
-
-请只输出 JSON 数组。`,
-});
+Vui lòng chỉ xuất mảng JSON.`,});
 
 /**
- * Lorebook skeleton prompt (Step 3 - 骨架模式).
+ * Lorebook skeleton prompt (Step 3 -Chế độ khung).
  * Generates world book entry skeletons for fast iteration.
- * Inspired by st-card-builder's 骨架生成 pipeline.
+ * Inspired by st-card-builder'sTạo khungpipeline.
  * Each skeleton is: title + detailed outline + keywords.
- * User expands skeletons individually later with AI 展开.
+ * User expands skeletons individually later with AI mở rộng.
  */
-export const LOREBOOK_SKELETON_PROMPT = (
-  cardName: string,
-  characterSummaries: string,
-  topic: string,
-  batchSize: number,
-  existingTitles: string,
-  rules?: string,
-) => ({
-  system: `你是一个 SillyTavern 世界书骨架生成器。产出【${batchSize}条】详细骨架。
+export const LOREBOOK_SKELETON_PROMPT = (cardName: string,
+ characterSummaries: string,
+ topic: string,
+ batchSize: number,
+ existingTitles: string,
+ rules?: string,) => ({system: `Bạn là Người tạo khung sổ thế giới SillyTavern. đầu ra 【${batchSize} mục】 Khung chi tiết.
 
-每条包含：
-- comment：标题（=== 标题 === 格式）
-- content：详细设定概要（120-250字），用键值对格式（如"地点: XX\\n特征: - A - B"），不要写散文
-- keys：2-4个触发词
-- strategy："selective"（触发型）或 "constant"（常驻型）
+Mỗi mục chứa:
+- bình luận: tiêu đề (=== tiêu đề === định dạng)
+- Nội dung: Tóm tắt bối cảnh chi tiết (120-250 từ), sử dụng dạng cặp key-value (chẳng hạn như “Location: XX\\\\nTính năng: - A - B”), không viết văn xuôi
+- phím: 2-4 từ kích hoạt
+- chiến lược: "chọn lọc" (được kích hoạt) hoặc "không đổi" (cư trú)
 
-【角色】：${characterSummaries}
-${existingTitles ? `\n【已有条目（禁止重复）】：${existingTitles}` : ''}
-${topic ? `\n【方向】：${topic}` : ''}
-${rules ? `\n【世界观约束/已有世界书】：${rules}` : ''}
+[Vai trò]: ${characterSummaries}
+${existingTitles? `\\n[Các mục hiện có (không được phép trùng lặp)]: ${existingTitles}`: ''}
+${topic? `\\n[Hướng]: ${topic}`: ''}
+${rules? `\\n[Những hạn chế của thế giới quan/sổ thế giới hiện có]: ${rules}`: ''}[Đầu ra]: Mảng JSON [{"comment":"====title===", "content":Tóm tắt cài đặt chi tiết (120-250 từ)", "keys":["Word","Word"], "strategy:"selective"},...]
 
-【输出】：JSON数组 [{ "comment":"===标题===", "content":"详细设定概要(120-250字)", "keys":["词","词"], "strategy":"selective" }, ...]
+Yêu cầu: Thông tin dày đặc và phong phú, không lặp lại và bao trùm nhiều khía cạnh (địa điểm/người/tổ chức/vật phẩm/sự kiện/quy tắc/khả năng). Bạn viết càng chi tiết thì càng tốt và đừng tiết kiệm không gian.
 
-要求：信息密集丰富、不重复、覆盖多维度（地点/人物/组织/物品/事件/规则/能力）。写得越详细越好，不要吝啬篇幅。
-
-请只输出 JSON 数组，不要加 markdown 代码块。`,
-  user: `为「${cardName}」生成 ${batchSize} 条世界书骨架。信息丰富详细，每条 120-250 字。`,
-});
+Vui lòng chỉ xuất mảng JSON và không thêm các khối mã đánh dấu.`,
+ user: `vì"${cardName}"phát ra ${batchSize} Một khung sổ thế giới. Thông tin phong phú và chi tiết, mỗi bài 120-250 từ.`,});
 
 /**
  * Expand a skeleton world book entry into a full detailed entry.
- * Used by the "AI 展开" button on short entries.
+ * Used by the "AI mở rộng" button on short entries.
  */
-export const EXPAND_ENTRY_PROMPT = (
-  entry: {
-    comment: string;
-    content: string;
-    keys: string[];
-    strategy: string;
-    position: number;
-  },
-  characterContext: string,
-  isSkeleton: boolean,
-  userRequirement?: string,
-) => ({
-  system: `你是一个 SillyTavern 词条润色大师。${isSkeleton ? '原条目是骨架概要，请展开为完整详细的世界书设定词条（至少350字），保留方向但大幅扩充，写成一个完整、详尽的设定条目。' : '修改一个已存在的词条。'}
-【原词条】:
-标题: ${entry.comment}
-策略: ${entry.strategy}
-触发词: ${entry.keys.join(',')}
-内容: ${entry.content}
-${characterContext ? `\n【角色上下文】：\n${characterContext.substring(0, 800)}` : ''}
+export const EXPAND_ENTRY_PROMPT = (entry: {comment: string;
+ content: string;
+ keys: string[];
+ strategy: string;
+ position: number;},
+ characterContext: string,
+ isSkeleton: boolean,
+ userRequirement?: string,) => ({system: `Bạn là một bậc thầy đánh bóng mục nhập SillyTavern. ${isSkeleton? "Mục ban đầu là một bản tóm tắt khung. Vui lòng mở rộng nó thành một mục cài đặt Sách Thế giới đầy đủ và chi tiết (ít nhất 350 từ), giữ nguyên hướng nhưng mở rộng đáng kể và viết một mục cài đặt đầy đủ và chi tiết.": "Sửa đổi một mục hiện có."}[Bài dự thi gốc]:
+Tiêu đề: ${entry.comment} Chiến lược: ${entry.strategy} Từ kích hoạt: ${entry.keys.join(',')} nội dung: ${entry.content}
+${characterContext? `\\n[Bối cảnh nhân vật]:\\n ${characterContext.substring(0, 800)}`: ''}[Nhiệm vụ]: Viết lại. JSON đầu ra:
+{"comment": "Title", "content": "Cài đặt chi tiết (ít nhất 350 từ, sử dụng cặp khóa-giá trị và định dạng danh sách, viết chi tiết mà không tiết kiệm chỗ)", "keys": ["Từ kích hoạt", "2-5"], "strategy": "chọn lọc hoặc không đổi", "position": ${entry.position}}
 
-【任务】：重写。输出JSON：
-{ "comment": "标题", "content": "详细设定（至少350字，使用键值对和列表格式，写得详细不要节省篇幅）", "keys": ["触发词", "2-5个"], "strategy": "selective 或 constant", "position": ${entry.position} }
+Quy tắc viết: dạng cơ sở dữ liệu, một câu một nghĩa, hành vi thể hiện tính cách và bốn câu hỏi trong mỗi câu. Toàn văn bằng tiếng Trung giản thể.
 
-写作规则：数据库格式、一句一意、行为展现性格、每句话过四问。全文简体中文。
-
-请只输出 JSON，不要加 markdown 代码块。`,
-  user: isSkeleton
-    ? `将骨架「${entry.comment}」展开为完整详细设定。${userRequirement ? `额外要求：${userRequirement}` : ''}`
-    : `修改词条「${entry.comment}」：${userRequirement || '优化内容'}`,
-});
+Vui lòng chỉ xuất JSON mà không thêm khối mã đánh dấu.`,
+ user: isSkeleton? `Khung"${entry.comment}” Mở rộng để hoàn thành cài đặt chi tiết. ${userRequirement? `Yêu cầu bổ sung: ${userRequirement}`: ''}`: `Sửa đổi mục "${entry.comment}」：${userRequirement || "Tối ưu hóa nội dung"}`,});
 
 /**
  * First message generation prompt (Step 4).
  * Generates an opening message for the character.
  */
-export const FIRST_MESSAGE_PROMPT = (cardName: string, characterDescriptions: string, sceneHint: string, targetWordCount?: number, worldbookContext?: string) => {
-  const lengthInstruction = targetWordCount
-    ? `字数控制在 ${targetWordCount} 字左右（允许上下浮动 10%）。`
-    : '至少写 500 字以上，内容越丰富越好。';
-  return {
-    system: `你正在为 AI 角色扮演角色撰写开场白（第一条消息）。
+export const FIRST_MESSAGE_PROMPT = (cardName: string, characterDescriptions: string, sceneHint: string, targetWordCount?: number, worldbookContext?: string) => {const lengthInstruction = targetWordCount? `Số từ được kiểm soát tại ${targetWordCount} Từ trái và phải (đã bật dao động 10%).`: "Viết ít nhất 500 từ và càng nhiều nội dung càng tốt.";
+ return {system: `Bạn đang viết dòng mở đầu (tin nhắn đầu tiên) cho một nhân vật nhập vai AI.
 
-## 开场白的写作要求：
+## Yêu cầu viết lời mở đầu:
 
-1. **篇幅要求**：${lengthInstruction}
-2. **结构要素**：
-   - 环境描写：用具体的视觉、听觉、触觉、嗅觉细节建立场景
-   - 角色动作：通过行为展示性格，不要直接说"他很冷漠"，而是写具体行为
-   - 内心独白或对话：展示角色的说话风格和思维方式
-   - 钩子结尾：留下悬念或给用户一个明确的回应入口
+1. **Yêu cầu về độ dài**: ${lengthInstruction}2. **Các phần tử kết cấu**:
+ - Mô tả môi trường: Sử dụng các chi tiết cụ thể về thị giác, thính giác, xúc giác và khứu giác để tạo cảnh
+ - Hành động của nhân vật: Thể hiện nhân vật thông qua hành động. Đừng chỉ nói “Anh ấy lạnh lùng” mà hãy viết ra những hành động cụ thể.
+ - Độc thoại nội tâm hoặc đối thoại: Thể hiện phong cách nói chuyện, lối suy nghĩ của nhân vật
+ -Kết thúc câu chuyện: để lại sự hồi hộp hoặc cho người dùng cơ hội rõ ràng để phản hồi
 
-3. **格式规范**：
-   - 用 {{user}} 作为用户占位符
-   - 角色直接使用其设定名称（不要使用 {{char}} 占位符，因为可能是多角色卡）
-   - 分段清晰，每段聚焦一个方面
-   - 全文使用简体中文
+3. **Đặc tả định dạng**:
+ - Sử dụng {{user}} làm trình giữ chỗ người dùng
+ - Ký tự trực tiếp sử dụng tên cài đặt của mình (không sử dụng phần giữ chỗ {{char}}, vì có thể là thẻ nhiều ký tự)
+ - Phân khúc rõ ràng, mỗi phân khúc tập trung vào một khía cạnh
+ - Toàn bộ văn bản bằng tiếng Trung giản thể
 
-4. **避免**：
-   - 不要写得太短、太概括
-   - 不要用抽象形容词堆砌
-   - 不要一次性把故事讲完，要留有余地
+4. **Tránh**:
+ - Không viết quá ngắn hoặc quá chung chung
+ - Không sử dụng tính từ trừu tượng
+ - Đừng kể hết câu chuyện cùng một lúc, hãy chừa chỗ cho nó
 
-请只输出消息正文，不要加引号、标题或其他标签。`,
-    user: `为以下角色卡撰写开场白：
+Vui lòng chỉ xuất nội dung tin nhắn mà không có dấu ngoặc kép, tiêu đề hoặc thẻ khác.`,
+ user: `Viết lời mở đầu cho card nhân vật sau:
 
-名称：${cardName}
-角色：
-${characterDescriptions || '(暂无角色描述，请自由发挥)'}
-${worldbookContext ? `\n已有世界书设定（必须严格遵守，开场白不得与其冲突；优先使用其中的人物关系、世界规则、文风、事件和场景设定）：\n${worldbookContext}` : ''}
-${sceneHint ? `\n场景：${sceneHint}` : ''}
-${targetWordCount ? `\n【重要】字数要求约 ${targetWordCount} 字，请确保内容充实详细。` : '\n【重要】请写长一些，至少 500 字，包含丰富的场景描写和角色互动。'}
-
-请只输出消息正文。`,
-  };
-};
+Tên: ${cardName} Vai trò: ${characterDescriptions || "(Chưa có mô tả vai trò, mời các bạn chơi thoải mái)"}
+${worldbookContext? `\\nĐã có bối cảnh sổ thế giới (phải được tuân thủ nghiêm ngặt và lời mở đầu không được xung đột với bối cảnh đó; ưu tiên sử dụng các mối quan hệ nhân vật, quy tắc thế giới, phong cách viết, sự kiện và bối cảnh):\\n ${worldbookContext}`: ''}
+${sceneHint? `\\nTình huống: ${sceneHint}`: ''}
+${targetWordCount? `\\n[Quan trọng] Số từ xấp xỉ ${targetWordCount} Hãy đảm bảo nội dung có ý nghĩa và chi tiết.`: "[Quan trọng] Vui lòng viết dài hơn, ít nhất 500 từ, bao gồm mô tả cảnh phong phú và tương tác nhân vật."} Vui lòng chỉ xuất ra nội dung tin nhắn.`,};};
 
 /**
  * Example dialogues generation prompt (Step 5).
  * Generates 2-3 example conversation exchanges.
  */
-export const EXAMPLE_DIALOGUES_PROMPT = (cardName: string, characterDescriptions: string, worldbookContext?: string) => ({
-  system: `你正在为 AI 角色扮演角色卡撰写示例对话。示例对话是教 AI 如何扮演角色的最重要素材——AI 会模仿这里的语气、用词、行为模式来回复用户。
+export const EXAMPLE_DIALOGUES_PROMPT = (cardName: string, characterDescriptions: string, worldbookContext?: string) => ({system: `Bạn đang viết đoạn hội thoại mẫu cho card nhân vật nhập vai AI. Các cuộc hội thoại mẫu là tài liệu quan trọng nhất để dạy AI cách đóng vai trò - AI sẽ bắt chước giọng điệu, lựa chọn từ ngữ và các mẫu hành vi ở đây để phản hồi lại người dùng.
 
-## 写作要求：
+##Yêu cầu viết:
 
-1. **数量**：写 3-4 段独立的对话场景
-2. **每段长度**：每段至少 200 字，包含角色的动作描写、心理活动、对话台词，不要只写干巴巴的一句话回复
-3. **多样性**：不同场景展示角色的不同侧面——比如日常、冲突、温情、幽默等
-4. **角色还原**：对话必须体现角色独特的说话风格（口癖、语气词、句式习惯）
-5. **格式规范**：
-   - 每段以 <START> 开头
-   - 用户消息用 {{user}}: 开头
-   - 角色回复用角色的实际名称开头（如 角色名: ），不要使用 {{char}} 占位符
-   - 角色回复中可以穿插动作描写（用 *斜体* 或直接描写）
-6. 全文使用简体中文
-${worldbookContext ? `\n7. **重要**：必须与已有世界书设定保持一致，对话中涉及的角色关系、设定、背景等不能与已有世界书冲突；可以自然地融入世界书中的设定元素来丰富对话内容。` : ''}
+1. **Số lượng**: Viết 3-4 cảnh thoại riêng biệt
+2. **Độ dài mỗi đoạn**: Mỗi đoạn tối thiểu 200 từ, bao gồm mô tả hành động, hoạt động tâm lý và lời thoại của nhân vật. Đừng chỉ viết một câu trả lời khô khan.
+3. **Đa dạng**: Các cảnh khác nhau thể hiện những khía cạnh khác nhau của nhân vật - chẳng hạn như cuộc sống đời thường, xung đột, ấm áp, hài hước, v.v.
+4. **Phục hồi nhân vật**: Lời thoại phải phản ánh phong cách nói độc đáo của nhân vật (thói quen miệng, trợ từ ngữ điệu, mẫu câu)
+5. **Thông số định dạng**:
+ - Mỗi đoạn bắt đầu bằng <BẮT ĐẦU>
+ - Tin nhắn của người dùng bắt đầu bằng {{user}}:
+ - Câu trả lời của nhân vật bắt đầu bằng tên thật của nhân vật (ví dụ: tên nhân vật:), không sử dụng phần giữ chỗ {{char}}
+ - Câu trả lời của nhân vật có thể xen kẽ với mô tả hành động (dùng *in nghiêng* hoặc mô tả trực tiếp)
+6. Sử dụng tiếng Trung giản thể xuyên suốt văn bản ${worldbookContext? `\\n 7. **Quan trọng**: Nó phải phù hợp với cài đặt sổ thế giới hiện có. Các mối quan hệ nhân vật, bối cảnh, bối cảnh, v.v. tham gia vào cuộc đối thoại không thể xung đột với các cuốn sổ thế giới hiện có; Các yếu tố bối cảnh trong cuốn sổ thế giới có thể được lồng ghép một cách tự nhiên để làm phong phú thêm nội dung đối thoại.`: ''}[Quan trọng] Viết càng chi tiết thì càng tốt. Đừng tiết kiệm không gian. Mỗi đoạn hội thoại phải trực quan như một đoạn tiểu thuyết.`,
+ user: `Tạo 3-4 đoạn hội thoại mẫu cho các nhân vật sau:
 
-【重要】写得越详细越好，不要节省篇幅。每段对话要像小说片段一样有画面感。`,
-  user: `为以下角色生成 3-4 段示例对话：
+Tên: ${cardName} Vai trò: ${characterDescriptions || "(Chưa có mô tả vai trò, mời các bạn chơi thoải mái)"}
+${worldbookContext? `\\n\\n## Đã có cài đặt sổ thế giới (bắt buộc phải tham khảo, nội dung hội thoại phải nhất quán với cài đặt sau):\\n\\n ${worldbookContext}`: ''} Ví dụ định dạng:
+<BẮT ĐẦU>
+{{user}}: Người dùng đã nói điều gì đó
+Tên nhân vật: *Mô tả hành động của nhân vật* Lời thoại của nhân vật...Thêm lời thoại và mô tả...
 
-名称：${cardName}
-角色：
-${characterDescriptions || '(暂无角色描述，请自由发挥)'}
-${worldbookContext ? `\n\n## 已有世界书设定（必须参考，对话内容需与以下设定保持一致）：\n\n${worldbookContext}` : ''}
+<BẮT ĐẦU>
+{{user}}: tin nhắn của người dùng từ một cảnh khác
+Tên nhân vật: *Hành động* Dòng...
 
-格式示例：
-<START>
-{{user}}: 用户说了一句话
-角色名: *角色的动作描写* 角色台词...更多台词和描写...
-
-<START>
-{{user}}: 另一个场景的用户消息
-角色名: *动作* 台词...
-
-【重要】每段对话至少 200 字，展示不同情绪和场景。请只输出对话正文。`,
-});
+[Quan trọng] Mỗi đoạn hội thoại phải dài ít nhất 200 từ, thể hiện những cảm xúc và cảnh quay khác nhau. Vui lòng chỉ xuất văn bản của cuộc trò chuyện.`,});
 
 /**
  * AI Smart Organize prompt.
  * Analyzes all world book entries and suggests optimized parameters.
- * Reference: st-card-builder AI 智能整理 feature.
+ * Reference: st-card-builder AITổ chức thông minhfeature.
  */
-export const ORGANIZE_ENTRIES_PROMPT = (entries: Array<{
-  index: number;
-  name: string;
-  content: string;
-  keys: string[];
-  position: string;
-  insertion_order: number;
-  depth: number;
-  probability: number;
-  constant: boolean;
-}>) => ({
-  system: `你是一个 SillyTavern 世界书优化专家。分析世界书条目并优化它们的运行时参数。
+export const ORGANIZE_ENTRIES_PROMPT = (entries: Array<{index: number;
+ name: string;
+ content: string;
+ keys: string[];
+ position: string;
+ insertion_order: number;
+ depth: number;
+ probability: number;
+ constant: boolean;}>) => ({system: `Bạn là Chuyên gia tối ưu hóa sổ thế giới SillyTavern. Phân tích các mục trong Sách Thế giới và tối ưu hóa các tham số thời gian chạy của chúng.
 
-优化规则：
-- position: before_char(角色前)=适合背景设定, after_char(角色后)=适合角色相关, before_example(示例前)=适合文风指导, after_example(示例后)=适合输出格式
-- insertion_order: 背景设定=10-30, 角色设定=30-60, 能力/技能=60-80, 物品/地点=80-100, 事件/规则=100-120
-- depth: 核心设定=2-4(始终检查), 场景相关=6-10(近期消息), 稀有信息=15+(很少触发)
-- probability: 核心设定=100, 日常设定=90-100, 稀有/随机事件=10-50
-- constant: 只有真正的背景规则才设为true(最多2-3条), 其他设为false
+Quy tắc tối ưu hóa:
+- vị trí: before_char (trước nhân vật) = phù hợp với cài đặt nền, after_char (sau nhân vật) = phù hợp với liên quan đến nhân vật, before_example (ví dụ trước) = phù hợp với hướng dẫn về kiểu, after_example (ví dụ sau) = phù hợp với định dạng đầu ra
+- thứ tự chèn: cài đặt nền=10-30, thiết lập nhân vật=30-60, khả năng/kỹ năng=60-80, vật phẩm/vị trí=80-100, sự kiện/quy tắc=100-120
+- độ sâu: cài đặt cốt lõi=2-4 (luôn được chọn), liên quan đến cảnh=6-10 (tin tức gần đây), thông tin hiếm=15+ (hiếm khi được kích hoạt)
+- xác suất: cài đặt cốt lõi=100, cài đặt hàng ngày=90-100, sự kiện hiếm/ngẫu nhiên=10-50
+- hằng số: Chỉ các quy tắc nền thực được đặt thành đúng (tối đa 2-3) và các quy tắc nền khác được đặt thành sai.
 
-输出 JSON 数组，每个对象包含: { index, position, insertion_order, depth, probability, constant, reason }
-reason 用中文简述为什么这样调整。`,
-  user: `优化以下 ${entries.length} 个世界书条目的参数：
-
-${entries.map(e => `[${e.index}] "${e.name}"
-当前: position=${e.position}, order=${e.insertion_order}, depth=${e.depth}, prob=${e.probability}, constant=${e.constant}
-触发词: ${(e.keys || []).join(', ') || '(无)'}
-内容摘要: ${e.content.slice(0, 150)}...`).join('\n\n')}
-
-返回优化后的 JSON 数组。只返回需要调整的条目，不需要调整的条目不要包含在结果中。`,
-});
+Mảng JSON đầu ra, mỗi đối tượng chứa: {chỉ mục, vị trí, thứ tự chèn, độ sâu, xác suất, hằng số, lý do}
+lý do Mô tả ngắn gọn bằng tiếng Trung tại sao lại thực hiện điều chỉnh này.`,
+ user: `Tối ưu hóa những điều sau đây ${entries.length} Các thông số cho mục sổ thế giới: ${entries.map(e => `[${e.index}] "${e.name}"
+Hiện tại: vị trí=${e.position}, order=${e.insertion_order}, depth=${e.depth}, prob=${e.probability}, constant=${e.constant} Từ kích hoạt: ${(e.keys || []).join(', ') || "(không có)"} Tóm tắt nội dung: ${e.content.slice(0, 150)}...`).join('\n\n')} Trả về một mảng JSON được tối ưu hóa. Chỉ những mục cần điều chỉnh mới được trả về và những mục không cần điều chỉnh sẽ không được đưa vào kết quả.`,});
 
 /**
  * AI Trigger Key Generation prompt.
  * Generates natural trigger keywords for world book entries.
- * Reference: st-card-builder AI 触发词生成 feature.
+ * Reference: st-card-builder AITạo từ kích hoạtfeature.
  */
-export const GENERATE_KEYS_PROMPT = (entries: Array<{
-  index: number;
-  name: string;
-  content: string;
-  existingKeys: string[];
-}>) => ({
-  system: `你是一个 SillyTavern 触发词专家。为世界书条目生成自然、精准的触发关键词。
+export const GENERATE_KEYS_PROMPT = (entries: Array<{index: number;
+ name: string;
+ content: string;
+ existingKeys: string[];}>) => ({system: `Bạn là một chuyên gia về từ kích hoạt SillyTavern. Tạo từ khóa kích hoạt tự nhiên và chính xác cho các mục Sách Thế giới.
 
-规则：
-- 关键词应该是聊天中自然出现的词汇（角色名、地名、物品名、技能名等）
-- 严禁单汉字关键词（如"剑"→改为"长剑"或"破晓之剑"）
-- 避免过于泛用的词汇（如"老师"→"语文老师"）
-- 每个条目 2-5 个关键词
-- 角色相关条目必须包含角色名作为关键词
-- 关键词应该是具体的名词/专有名词，不要动词和形容词
+Quy tắc:
+- Từ khóa phải là những từ xuất hiện tự nhiên trong cuộc trò chuyện (tên nhân vật, tên địa điểm, tên vật phẩm, tên kỹ năng, v.v.)
+- Nghiêm cấm các từ khóa một chữ (chẳng hạn như "kiếm" → đổi thành "kiếm dài" hoặc "kiếm bình minh")
+- Tránh dùng những từ quá chung chung (chẳng hạn như “giáo viên” → “giáo viên tiếng Trung”)
+- 2-5 từ khóa cho mỗi mục
+- Các mục liên quan đến vai trò phải chứa tên vai trò làm từ khóa
+- Từ khóa phải là danh từ/danh từ riêng cụ thể, không phải động từ và tính từ
 
-输出 JSON 数组: [{ index, keys }]`,
-  user: `为以下 ${entries.length} 个世界书条目补充触发关键词：
-
-${entries.map(e => `[${e.index}] "${e.name}"
-现有关键词: ${e.existingKeys.length > 0 ? e.existingKeys.join(', ') : '(无)'}
-内容: ${e.content.slice(0, 200)}`).join('\n\n')}
-
-返回 JSON 数组。只返回需要补充关键词的条目。`,
-});
+Mảng JSON đầu ra: [{chỉ mục, khóa}]`,
+ user: `cho những điều sau đây ${entries.length} Mỗi mục sổ thế giới thêm từ khóa kích hoạt: ${entries.map(e => `[${e.index}] "${e.name}"
+Từ khóa hiện tại: ${e.existingKeys.length > 0? e.existingKeys.join(', '): "(không có)"} nội dung: ${e.content.slice(0, 200)}`).join('\n\n')} Trả về một mảng JSON. Chỉ những mục yêu cầu từ khóa bổ sung mới được trả về.`,});
 
 /**
  * MVU Variable Suggestion prompt (Step 6).
  * Analyzes card content and suggests MVU variables for state tracking.
  * Based on world-book-mcp v5 MVU methodology.
  */
-export const MVU_VARIABLES_PROMPT = (
-  cardName: string,
-  characterSummaries: string,
-  worldbookSummary: string,
-  firstMessageExcerpt: string,
-) => ({
-  system: `你是一个 SillyTavern MVU (Model-View-Update) 变量设计专家。根据角色卡内容，设计合理的状态追踪变量。
+export const MVU_VARIABLES_PROMPT = (cardName: string,
+ characterSummaries: string,
+ worldbookSummary: string,
+ firstMessageExcerpt: string,) => ({system: `Bạn là chuyên gia thiết kế biến MVU (Model-View-Update) của SillyTavern. Dựa vào nội dung card nhân vật mà thiết kế các biến theo dõi trạng thái hợp lý.
 
-设计原则（来自 world-book-mcp v5）：
-- 变量应追踪会影响剧情走向的状态：好感度、关系阶段、地点、时间、任务进度等
-- 数字变量使用 number 类型，可设 min/max 范围
-- 阶段/状态变量使用 enum 类型，列出所有可能取值
-- 文本变量使用 string 类型
-- 集合/背包等使用 record 类型
-- 只读派生变量标记 readonly（AI 可见但不应更新）
-- 隐藏运行时变量标记 hidden（AI 不可见）
-- 变量路径使用中文键名，如 ["角色A", "好感度"]
-- 不要滥用变量，只追踪真正影响剧情的状态
-- 通常 5-15 个变量即可覆盖大多数场景
+Nguyên tắc thiết kế (từ world-book-mcp v 5):
+- Các biến cần theo dõi trạng thái ảnh hưởng đến hướng đi của cốt truyện: độ ưa thích, giai đoạn quan hệ, địa điểm, thời gian, tiến độ nhiệm vụ, v.v.
+- Biến số sử dụng loại số và có thể đặt phạm vi tối thiểu/tối đa
+- Biến pha/trạng thái sử dụng kiểu enum để liệt kê tất cả các giá trị có thể
+- Biến văn bản sử dụng kiểu chuỗi
+- Bộ sưu tập/ba lô, v.v. sử dụng loại bản ghi
+- các biến dẫn xuất chỉ đọc được đánh dấu là chỉ đọc (AI hiển thị nhưng không nên cập nhật)
+- Ẩn cờ biến thời gian chạy ẩn (AI vô hình)
+- Sử dụng tên khóa tiếng Trung cho các đường dẫn biến đổi, chẳng hạn như ["Ký tự A", "Tính thuận lợi"]
+- Không lạm dụng biến số, chỉ theo dõi những trạng thái thực sự ảnh hưởng đến cốt truyện
+- Thông thường 5-15 biến có thể bao gồm hầu hết các kịch bản
 
-输出 JSON 数组，不要加 markdown 代码块。`,
-  user: `为以下角色卡设计 MVU 状态追踪变量：
+Xuất ra một mảng JSON mà không cần thêm các khối mã đánh dấu.`,
+ user: `Thiết kế các biến theo dõi trạng thái MVU cho các card nhân vật sau:
 
-卡片名称: ${cardName}
-角色: ${characterSummaries}
-${worldbookSummary ? `世界书概要: ${worldbookSummary}` : ''}
-${firstMessageExcerpt ? `开场白摘要: ${firstMessageExcerpt.slice(0, 300)}` : ''}
+Tên thẻ: ${cardName} Vai trò: ${characterSummaries}
+${worldbookSummary? `Tóm tắt sổ thế giới: ${worldbookSummary}`: ''}
+${firstMessageExcerpt? `Tóm tắt lời mở đầu: ${firstMessageExcerpt.slice(0, 300)}`: ''} Trả về một mảng JSON, mỗi biến chứa:
+{"đường dẫn": ["chủ đề", "tên biến"],
+ "loại": "số" | "chuỗi" | "boolean" | "enum" | "kỷ lục",
+ "defaultValue": giá trị mặc định,
+ "description": "Mô tả cách sử dụng biến (tiếng Trung)",
+ "enumValues": ["chỉ loại enum", "danh sách giá trị"],
+ "min": giá trị tối thiểu (chỉ số),
+ "max": giá trị tối đa (chỉ số),
+ "ẩn": sai,
+ "chỉ đọc": sai}
 
-返回 JSON 数组，每个变量包含：
-{
-  "path": ["主体", "变量名"],
-  "kind": "number" | "string" | "boolean" | "enum" | "record",
-  "defaultValue": 默认值,
-  "description": "变量用途说明（中文）",
-  "enumValues": ["仅enum类型", "列出取值"],
-  "min": 最小值(仅number),
-  "max": 最大值(仅number),
-  "hidden": false,
-  "readonly": false
-}
+Tham khảo cấu trúc biến điển hình:
+- Thế giới: {ngày, khoảng thời gian, địa điểm}
+- Vai trò: {sự thuận lợi (0-100), giai đoạn quan hệ (enum), trạng thái hiện tại (chuỗi)}
+- Nhân vật chính: {Inventory(record)}
 
-典型变量结构参考：
-- 世界: { 日期, 时间段, 地点 }
-- 角色: { 好感度(0-100), 关系阶段(enum), 当前状态(string) }
-- 主角: { 物品栏(record) }
-
-请只输出 JSON 数组。`,
-});
+Vui lòng chỉ xuất mảng JSON.`,});
 
 /**
  * Card Translation prompt.
  * Translates all text fields of a character card between Chinese and English.
  */
-export const TRANSLATE_CARD_PROMPT = (targetLang: 'zh' | 'en') => ({
-  system: `你是一位专业的角色卡翻译。将角色卡内容翻译为${targetLang === 'zh' ? '简体中文' : 'English'}。
+export const TRANSLATE_CARD_PROMPT = (targetLang: 'zh' | 'en') => ({system: `Bạn là một dịch giả card nhân vật chuyên nghiệp. Dịch nội dung card nhân vật sang ${targetLang === 'zh'? "Tiếng Trung giản thể": 'English'}.
 
-翻译规则：
-- 保持原文的格式结构（## 标题、列表、键值对等）
-- 专有名词保持原文或在括号中注明（如“霜落(Frostfall)”）
-- {{user}} 占位符保持不变
-- 角色的实际名称保持不变
-- 对话示例中的 <START> 标记保持不变
-- 翻译要自然流畅，不要机翻味
-- 保持原文的信息密度和长度
+Quy tắc dịch:
+- Duy trì cấu trúc định dạng của văn bản gốc (## tiêu đề, danh sách, cặp khóa-giá trị, v.v.)
+- Danh từ riêng phải giữ nguyên trong văn bản gốc hoặc để trong ngoặc đơn (chẳng hạn như "Frostfall")
+- Phần giữ chỗ {{user}} không thay đổi
+- Tên thật của nhân vật không thay đổi
+- Thẻ <START> trong ví dụ hộp thoại không thay đổi
+- Bản dịch phải tự nhiên và mượt mà, không phải dịch máy.
+- Duy trì mật độ thông tin và độ dài của văn bản gốc
 
-返回 JSON 对象，包含翻译后的所有文本字段。`,
-  user: `将以下角色卡内容翻译为${targetLang === 'zh' ? '简体中文' : 'English'}：
+Trả về một đối tượng JSON chứa tất cả các trường văn bản đã dịch.`,
+ user: `Dịch nội dung card nhân vật sau sang ${targetLang === 'zh'? "Tiếng Trung giản thể": 'English'}:
 
 {cardContent}
 
-返回同样结构的 JSON 对象，所有文本字段翻译为${targetLang === 'zh' ? '简体中文' : 'English'}。只输出 JSON。`,
-});
+Trả về một đối tượng JSON có cùng cấu trúc, với tất cả các trường văn bản được dịch sang ${targetLang === 'zh'? "Tiếng Trung giản thể": 'English'}. Chỉ cần xuất JSON.`,});
 
 /**
  * AI Card Diagnosis prompt.
  * Analyzes a character card and provides structured diagnostic report.
  */
-export const CARD_DIAGNOSIS_PROMPT = () => ({
-  system: `你是一位资深的 SillyTavern 角色卡诊断师。你的任务是全面分析一张角色卡，发现潜在问题并给出具体改进建议。
+export const CARD_DIAGNOSIS_PROMPT = () => ({system: `Bạn là chuyên gia chẩn đoán card nhân vật SillyTavern cấp cao. Nhiệm vụ của bạn là phân tích toàn diện card nhân vật, xác định các vấn đề tiềm ẩn và đưa ra đề xuất cải tiến cụ thể.
 
-诊断维度：
-1. **设定完整性** — description 是否涵盖基本信息、外貌、性格、背景、关系
-2. **人设一致性** — description/personality/first_mes 之间是否自洽
-3. **剧情逻辑** — 开场白是否合理、示例对话是否体现人设
-4. **世界观逻辑** — 世界书条目之间是否矛盾、是否覆盖关键设定
-5. **OOC 风险** — 哪些设定可能导致 AI 扮演时偏离人设
-6. **Token 效率** — 是否有冗余内容、是否可以更精简
+Kích thước chẩn đoán:
+1. **Cài đặt mức độ đầy đủ** — Phần mô tả có bao gồm thông tin cơ bản, ngoại hình, tính cách, lý lịch và các mối quan hệ không?
+2. **Tính nhất quán trong thiết kế cá nhân** — liệu mô tả/tính cách/tên đầu tiên có tự nhất quán hay không
+3. **Logic cốt truyện** — Câu mở đầu có hợp lý không và liệu đoạn hội thoại mẫu có phản ánh thiết kế nhân vật không?
+4. **Worldview Logic** — Liệu có xung đột giữa các mục trong sổ thế giới hay không và liệu chúng có bao gồm các cài đặt chính hay không
+5. **Rủi ro OOC** — Cài đặt nào có thể khiến AI đi chệch khỏi tính cách của nó khi chơi?
+6. **Hiệu quả của mã thông báo** — liệu có nội dung dư thừa hay không và liệu nội dung đó có thể được sắp xếp hợp lý hay không
 
-输出格式：返回 JSON 对象
-{
-  "overall_score": 0-100, // 总体评分
-  "summary": "一句话总体评价",
-  "categories": [
-    {
-      "name": "维度名称",
-      "score": 0-100,
-      "issues": ["具体问题1", "具体问题2"],
-      "suggestions": ["具体改进建议1", "具体改进建议2"]
-    }
-  ],
-  "highlights": ["做得好的地方1", "做得好的地方2"]
-}`, 
-  user: `请诊断以下角色卡：
+Định dạng đầu ra: Trả về đối tượng JSON
+{"điểm_tổng": 0-100, // điểm tổng
+ "summary": "Đánh giá tổng thể trong một câu",
+ "danh mục": [{"name": "Tên thứ nguyên",
+ "điểm": 0-100,
+ "vấn đề": ["Vấn đề cụ thể 1", "Vấn đề cụ thể 2"],
+ "gợi ý": ["Đề xuất cải tiến cụ thể 1", "Đề xuất cải tiến cụ thể 2"]}],
+ "điểm nổi bật": ["Điều chúng tôi đã làm tốt 1", "Điều chúng tôi đã làm tốt 2"]}`, 
+ user: `Hãy chẩn đoán các card nhân vật sau:
 
 {cardContent}
 
-请从设定完整性、人设一致性、剧情逻辑、世界观逻辑、OOC风险、Token效率六个维度进行全面诊断。只输出 JSON。`,
-});
+Vui lòng tiến hành chẩn đoán toàn diện từ sáu khía cạnh về tính toàn vẹn của cài đặt, tính nhất quán của nhân vật, logic cốt truyện, logic thế giới quan, rủi ro OOC và hiệu quả của mã thông báo. Chỉ cần xuất JSON.`,});
 
 /**
  * Utility: strip markdown code fences from AI responses.
- * AI models often wrap JSON in ```json ... ``` blocks.
+ * AI models often wrap JSON in ```json... ``` blocks.
  */
-export function stripMarkdownFences(text: string): string {
-  return text
-    .replace(/^```(?:json|JSON)?\s*\n?/i, '')
-    .replace(/\n?```\s*$/i, '')
-    .trim();
-}
+export function stripMarkdownFences(text: string): string {return text.replace(/^```(?:json|JSON)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();}
 
 /**
  * Sanitize common JSON issues in AI responses before parsing:
- * - Trailing commas before } or ]
+ * - Trailing commas before} or]
  * - Single quotes instead of double quotes (simple heuristic)
  * - Unescaped newlines inside string values
  */
-function sanitizeJsonString(raw: string): string {
-  let s = raw;
-  // Remove trailing commas: ,} or ,]
-  s = s.replace(/,\s*([}\]])/g, '$1');
-  // Replace single-quoted keys/values with double-quoted (simple cases)
-  // Only if the string has no double quotes at all (heuristic to avoid breaking valid JSON)
-  if (!s.includes('"') && s.includes("'")) {
-    s = s.replace(/'([^']*)'/g, '"$1"');
-  }
-  return s;
-}
+function sanitizeJsonString(raw: string): string {let s = raw;
+ // Remove trailing commas: ,} or ,]
+ s = s.replace(/,\s*([}\]])/g, '$1');
+ // Replace single-quoted keys/values with double-quoted (simple cases)
+ // Only if the string has no double quotes at all (heuristic to avoid breaking valid JSON)
+ if (!s.includes('"') && s.includes("'")) {s = s.replace(/'([^']*)'/g, '"$1"');}
+ return s;}
 
 /**
  * Attempt to parse AI response as JSON with multi-layer fallback.
@@ -581,53 +472,30 @@ function sanitizeJsonString(raw: string): string {
  * 4. Try to find multiple JSON objects/arrays and return the largest
  * 5. Return null if all attempts fail
  */
-export function parseAIJson(text: string): unknown | null {
-  const cleaned = stripMarkdownFences(text);
+export function parseAIJson(text: string): unknown | null {const cleaned = stripMarkdownFences(text);
 
-  // Attempt 1: Direct parse
-  try {
-    return JSON.parse(cleaned);
-  } catch { /* continue */ }
+ // Attempt 1: Direct parse
+ try {return JSON.parse(cleaned);} catch {/* continue */}
 
-  // Attempt 2: Sanitize and retry
-  const sanitized = sanitizeJsonString(cleaned);
-  try {
-    return JSON.parse(sanitized);
-  } catch { /* continue */ }
+ // Attempt 2: Sanitize and retry
+ const sanitized = sanitizeJsonString(cleaned);
+ try {return JSON.parse(sanitized);} catch {/* continue */}
 
-  // Attempt 3: Extract first JSON object or array
-  const objMatch = cleaned.match(/\{[\s\S]*\}/);
-  const arrMatch = cleaned.match(/\[[\s\S]*\]/);
-  const candidates = [objMatch?.[0], arrMatch?.[0]].filter(Boolean) as string[];
+ // Attempt 3: Extract first JSON object or array
+ const objMatch = cleaned.match(/\{[\s\S]*\}/);
+ const arrMatch = cleaned.match(/\[[\s\S]*\]/);
+ const candidates = [objMatch?.[0], arrMatch?.[0]].filter(Boolean) as string[];
 
-  // Sort by length descending — prefer larger matches
-  candidates.sort((a, b) => b.length - a.length);
+ // Sort by length descending — prefer larger matches
+ candidates.sort((a, b) => b.length - a.length);
 
-  for (const candidate of candidates) {
-    try {
-      return JSON.parse(candidate);
-    } catch { /* try sanitized */ }
-    try {
-      return JSON.parse(sanitizeJsonString(candidate));
-    } catch { /* continue */ }
-  }
+ for (const candidate of candidates) {try {return JSON.parse(candidate);} catch {/* try sanitized */}
+ try {return JSON.parse(sanitizeJsonString(candidate));} catch {/* continue */}}
 
-  // Attempt 4: Find all JSON objects/arrays and pick the largest valid one
-  const allMatches = [
-    ...cleaned.matchAll(/\{[\s\S]*?\}/g),
-    ...cleaned.matchAll(/\[[\s\S]*?\]/g),
-  ]
-    .map(m => m[0])
-    .sort((a, b) => b.length - a.length);
+ // Attempt 4: Find all JSON objects/arrays and pick the largest valid one
+ const allMatches = [...cleaned.matchAll(/\{[\s\S]*?\}/g),...cleaned.matchAll(/\[[\s\S]*?\]/g),].map(m => m[0]).sort((a, b) => b.length - a.length);
 
-  for (const m of allMatches.slice(0, 5)) {
-    try {
-      return JSON.parse(m);
-    } catch { /* skip */ }
-    try {
-      return JSON.parse(sanitizeJsonString(m));
-    } catch { /* skip */ }
-  }
+ for (const m of allMatches.slice(0, 5)) {try {return JSON.parse(m);} catch {/* skip */}
+ try {return JSON.parse(sanitizeJsonString(m));} catch {/* skip */}}
 
-  return null;
-}
+ return null;}

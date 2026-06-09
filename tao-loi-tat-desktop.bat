@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 echo ====================================
-echo   创建桌面快捷方式
+echo Tạo lối tắt trên màn hình
 echo ====================================
 echo.
 
@@ -9,8 +9,8 @@ cd /d "%~dp0"
 cscript //nologo "%~dp0create-shortcut.vbs"
 
 echo.
-echo ✅ 快捷方式已创建到桌面！
+echo ✅ Đã tạo lối tắt ra màn hình desktop!
 echo.
-echo 双击桌面上的 "Tavern Card Helper" 即可一键启动
+echo Nhấp đúp vào "Silly Tavern Tao Dich Card" trên màn hình để khởi động bằng một cú nhấp chuột
 echo ====================================
 pause

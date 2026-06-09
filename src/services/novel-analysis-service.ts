@@ -1,465 +1,317 @@
-import { callAIWithPrompt, callAIWithPromptStreaming, type StreamCallback } from './ai-service';
-import { parseAIJson } from '../constants/prompts';
-import { createEmptyLorebookEntry } from '../constants/defaults';
-import type { LorebookEntry } from '../constants/defaults';
+import {callAIWithPrompt, callAIWithPromptStreaming, type StreamCallback} from './ai-service';
+import {parseAIJson} from '../constants/prompts';
+import {createEmptyLorebookEntry} from '../constants/defaults';
+import type {LorebookEntry} from '../constants/defaults';
 
 export const NOVEL_LOREBOOK_IMPORT_KEY = 'novel-analysis-lorebook-import';
 
-export interface NovelChunk {
-  id: number;
-  title: string;
-  content: string;
-  start: number;
-  end: number;
-}
+export interface NovelChunk {id: number;
+ title: string;
+ content: string;
+ start: number;
+ end: number;}
 
-export interface NovelLorebookMaterial {
-  name: string;
-  keys: string[];
-  content: string;
-  category: string;
-  parent?: string;
-  purpose?: string;
-}
+export interface NovelLorebookMaterial {name: string;
+ keys: string[];
+ content: string;
+ category: string;
+ parent?: string;
+ purpose?: string;}
 
-export interface NovelAnalysisResult {
-  summary: string;
-  genre: string;
-  tone: string;
-  styleProfile: {
-    narration: string;
-    dialogue: string;
-    pacing: string;
-    imagery: string;
-    taboos: string[];
-  };
-  characters: Array<{
-    name: string;
-    role: string;
-    logicHub: string;
-    traits: string[];
-    appearance: string;
-    outfits: Array<{ scene: string; description: string }>;
-    relationships: Array<{ target: string; type: string; dynamic: string; evidence: string }>;
-    evidence: string;
-  }>;
-  relationshipMap: Array<{
-    source: string;
-    target: string;
-    relation: string;
-    conflictOrBond: string;
-    storyFunction: string;
-  }>;
-  uniqueSettings: Array<{
-    name: string;
-    category: string;
-    description: string;
-    difference: string;
-    usage: string;
-  }>;
-  locations: Array<{
-    name: string;
-    description: string;
-    significance: string;
-  }>;
-  factions: Array<{
-    name: string;
-    purpose: string;
-    members: string[];
-  }>;
-  timeline: Array<{
-    order: number;
-    event: string;
-    impact: string;
-  }>;
-  lorebookEntries: NovelLorebookMaterial[];
-  cleaningNotes: string[];
-}
+export interface NovelAnalysisResult {summary: string;
+ genre: string;
+ tone: string;
+ styleProfile: {narration: string;
+ dialogue: string;
+ pacing: string;
+ imagery: string;
+ taboos: string[];};
+ characters: Array<{name: string;
+ role: string;
+ logicHub: string;
+ traits: string[];
+ appearance: string;
+ outfits: Array<{scene: string; description: string}>;
+ relationships: Array<{target: string; type: string; dynamic: string; evidence: string}>;
+ evidence: string;}>;
+ relationshipMap: Array<{source: string;
+ target: string;
+ relation: string;
+ conflictOrBond: string;
+ storyFunction: string;}>;
+ uniqueSettings: Array<{name: string;
+ category: string;
+ description: string;
+ difference: string;
+ usage: string;}>;
+ locations: Array<{name: string;
+ description: string;
+ significance: string;}>;
+ factions: Array<{name: string;
+ purpose: string;
+ members: string[];}>;
+ timeline: Array<{order: number;
+ event: string;
+ impact: string;}>;
+ lorebookEntries: NovelLorebookMaterial[];
+ cleaningNotes: string[];}
 
-const CHAPTER_PATTERN = /(^|\n)(\s*(?:第[一二三四五六七八九十百千万零〇两\d]+[章节卷回幕部集]|番外|楔子|序章|终章|后记)[^\n]{0,60})/g;
+const CHAPTER_PATTERN = /(^|\n)(\s*(?:(?:chuong|chương|chapter|chap|phan|phần|hoi|hồi|tap|tập|quyen|quyển)\s*[\w\dIVXLCDM]+|\u7b2c[\u4e00-\u9fff\d]+[\u7ae0\u8282\u5377\u56de\u5e55\u90e8\u96c6]|\u756a\u5916|\u6954\u5b50|\u5e8f\u7ae0|\u7ec8\u7ae0|\u540e\u8bb0)[^\n]{0,60})/giu;
 const NOVEL_SAMPLE_MAX_CHARS = 42000;
 export const DEFAULT_NOVEL_OUTPUT_MAX_TOKENS = 16000;
 
-export function splitNovelText(text: string, maxChunkChars = 12000): NovelChunk[] {
-  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
-  if (!normalized) return [];
+export function splitNovelText(text: string, maxChunkChars = 12000): NovelChunk[] {const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+ if (!normalized) return [];
 
-  const matches = Array.from(normalized.matchAll(CHAPTER_PATTERN));
-  const chunks: NovelChunk[] = [];
+ const matches = Array.from(normalized.matchAll(CHAPTER_PATTERN));
+ const chunks: NovelChunk[] = [];
 
-  if (matches.length > 0) {
-    for (let i = 0; i < matches.length; i++) {
-      const current = matches[i];
-      const next = matches[i + 1];
-      const start = current.index ?? 0;
-      const end = next?.index ?? normalized.length;
-      const raw = normalized.slice(start, end).trim();
-      const title = (current[2] || `章节 ${i + 1}`).trim();
-      pushSplitChunk(chunks, title, raw, start, maxChunkChars);
-    }
-  } else {
-    pushSplitChunk(chunks, '区块 1', normalized, 0, maxChunkChars);
-  }
+ if (matches.length > 0) {for (let i = 0; i < matches.length; i++) {const current = matches[i];
+ const next = matches[i + 1];
+ const start = current.index?? 0;
+ const end = next?.index?? normalized.length;
+ const raw = normalized.slice(start, end).trim();
+ const title = (current[2] || `chương ${i + 1}`).trim();
+ pushSplitChunk(chunks, title, raw, start, maxChunkChars);}} else {pushSplitChunk(chunks, "khối 1", normalized, 0, maxChunkChars);}
 
-  return chunks.map((chunk, index) => ({ ...chunk, id: index + 1 }));
-}
+ return chunks.map((chunk, index) => ({...chunk, id: index + 1}));}
 
-function pushSplitChunk(chunks: NovelChunk[], title: string, content: string, start: number, maxChunkChars: number) {
-  if (content.length <= maxChunkChars) {
-    chunks.push({ id: chunks.length + 1, title, content, start, end: start + content.length });
-    return;
-  }
+function pushSplitChunk(chunks: NovelChunk[], title: string, content: string, start: number, maxChunkChars: number) {if (content.length <= maxChunkChars) {chunks.push({id: chunks.length + 1, title, content, start, end: start + content.length});
+ return;}
 
-  let offset = 0;
-  while (offset < content.length) {
-    const sliceEnd = Math.min(offset + maxChunkChars, content.length);
-    let end = sliceEnd;
-    if (sliceEnd < content.length) {
-      const punctuation = content.lastIndexOf('\n', sliceEnd);
-      if (punctuation > offset + maxChunkChars * 0.6) end = punctuation;
-    }
-    const part = content.slice(offset, end).trim();
-    if (part) {
-      const partNo = Math.floor(offset / maxChunkChars) + 1;
-      chunks.push({
-        id: chunks.length + 1,
-        title: `${title} (${partNo})`,
-        content: part,
-        start: start + offset,
-        end: start + end,
-      });
-    }
-    offset = end;
-  }
-}
+ let offset = 0;
+ while (offset < content.length) {const sliceEnd = Math.min(offset + maxChunkChars, content.length);
+ let end = sliceEnd;
+ if (sliceEnd < content.length) {const punctuation = content.lastIndexOf('\n', sliceEnd);
+ if (punctuation > offset + maxChunkChars * 0.6) end = punctuation;}
+ const part = content.slice(offset, end).trim();
+ if (part) {const partNo = Math.floor(offset / maxChunkChars) + 1;
+ chunks.push({id: chunks.length + 1,
+ title: `${title} (${partNo})`,
+ content: part,
+ start: start + offset,
+ end: start + end,});}
+ offset = end;}}
 
-export function buildNovelSample(chunks: NovelChunk[], maxChars = NOVEL_SAMPLE_MAX_CHARS): string {
-  if (chunks.length === 0) return '';
+export function buildNovelSample(chunks: NovelChunk[], maxChars = NOVEL_SAMPLE_MAX_CHARS): string {if (chunks.length === 0) return '';
 
-  const selectedIndexes = new Set<number>();
-  const anchors = [0, 1, Math.floor(chunks.length * 0.25), Math.floor(chunks.length * 0.5), Math.floor(chunks.length * 0.75), chunks.length - 2, chunks.length - 1];
-  anchors.forEach((index) => {
-    if (index >= 0 && index < chunks.length) selectedIndexes.add(index);
-  });
+ const selectedIndexes = new Set<number>();
+ const anchors = [0, 1, Math.floor(chunks.length * 0.25), Math.floor(chunks.length * 0.5), Math.floor(chunks.length * 0.75), chunks.length - 2, chunks.length - 1];
+ anchors.forEach((index) => {if (index >= 0 && index < chunks.length) selectedIndexes.add(index);});
 
-  const selected = Array.from(selectedIndexes).sort((a, b) => a - b).map((index) => chunks[index]);
-  const budgetPerChunk = Math.max(1800, Math.floor(maxChars / selected.length));
+ const selected = Array.from(selectedIndexes).sort((a, b) => a - b).map((index) => chunks[index]);
+ const budgetPerChunk = Math.max(1800, Math.floor(maxChars / selected.length));
 
-  return selected.map((chunk) => {
-    const excerpt = chunk.content.length > budgetPerChunk
-      ? `${chunk.content.slice(0, budgetPerChunk)}\n...(节选)`
-      : chunk.content;
-    return `# ${chunk.title}\n${excerpt}`;
-  }).join('\n\n---\n\n');
-}
+ return selected.map((chunk) => {const excerpt = chunk.content.length > budgetPerChunk? `${chunk.content.slice(0, budgetPerChunk)}\\n...(đoạn trích)`: chunk.content;
+ return `# ${chunk.title}\n ${excerpt}`;}).join('\n\n---\n\n');}
 
-export async function analyzeNovelText(title: string, chunks: NovelChunk[], outputMaxTokens = DEFAULT_NOVEL_OUTPUT_MAX_TOKENS): Promise<NovelAnalysisResult> {
-  const sample = buildNovelSample(chunks);
-  if (!sample) throw new Error('请先输入或上传小说文本');
+export async function analyzeNovelText(title: string, chunks: NovelChunk[], outputMaxTokens = DEFAULT_NOVEL_OUTPUT_MAX_TOKENS): Promise<NovelAnalysisResult> {const sample = buildNovelSample(chunks);
+ if (!sample) throw new Error("Vui lòng nhập hoặc tải lên văn bản tiểu thuyết trước");
 
-  const system = `你是“小说文本 → SillyTavern 世界书”的结构化拆书专家。你的目标不是写普通读后感，而是直接生成可导入世界书的素材库。
+ const system = `Bạn là chuyên gia trong việc giải nén có cấu trúc của "Văn bản tiểu thuyết → sổ thế giới SillyTavern". Mục tiêu của bạn không phải là viết một bài đánh giá chung mà là trực tiếp tạo ra một thư viện tài liệu có thể nhập vào world book.
 
-核心方向：
-- 按世界书结构拆分，不要混成一大段：人物归人物，人物外貌归人物外貌，人物不同场景着装归着装，人物关系归关系，人物逻辑枢纽归逻辑枢纽，事件归事件，地点归地点，势力归势力，特殊设定归特殊设定，文风归文风。
-- 允许做合理的创作型归纳：可以把文本中的隐含规律、关系张力、角色行为逻辑、叙事风格总结成可复用世界书，但必须基于节选证据，不要凭空加入未出现设定。
-- 对重要人物要拆成多条世界书：例如“A - 核心设定”“A - 外貌”“A - 场景着装”“A - 行为逻辑”“A与B - 关系张力”。
-- 着重梳理人物关系网络：关系类型、情感动力、冲突/依赖、叙事功能。
-- 着重梳理人物逻辑枢纽：角色为什么这样行动、欲望、恐惧、底线、认知偏差、关键矛盾。
-- 着重提取“特定设定”：只提不同于通用网文模板的独有规则、世界机制、组织制度、物品、仪式、禁忌、职业体系。
-- 着重提取文风：叙述视角、句式节奏、对白习惯、意象系统、情绪底色、需要避免的违和写法。
-- lorebookEntries 是最终产物，数量可以多，宁可拆细，也不要塞成一个大条目。
-- 每个 lorebookEntries.content 使用清晰字段、列表、短段落，适合世界书注入，不写散文鉴赏。
-- keys 至少 2 个字符，包含人名/别名/关系名/地点名/设定名，不要单字触发词。
-- 只输出 JSON，不要 markdown 代码块。`;
+Hướng cốt lõi:
+- Chia theo cấu trúc của sổ thế giới, không trộn thành một phần lớn: nhân vật thuộc về nhân vật, ngoại hình thuộc về nhân vật, trang phục của nhân vật trong các cảnh khác nhau thuộc về trang phục, mối quan hệ của nhân vật thuộc về mối quan hệ, trung tâm logic của nhân vật thuộc về trung tâm logic, sự kiện thuộc về sự kiện, địa điểm thuộc về địa điểm, lực lượng thuộc về lực lượng, bối cảnh đặc biệt thuộc về bối cảnh đặc biệt và phong cách viết thuộc về phong cách viết.
+- Cho phép tóm tắt sáng tạo hợp lý: các quy tắc ẩn, sự căng thẳng trong mối quan hệ, logic hành vi nhân vật và phong cách kể chuyện trong văn bản có thể được tóm tắt thành một cuốn sổ thế giới có thể sử dụng lại, nhưng phải dựa trên bằng chứng được trích xuất và không thêm các bối cảnh chưa từng nghe thấy.
+- Các nhân vật quan trọng nên được chia thành nhiều sổ thế giới: ví dụ: "A - bối cảnh cốt lõi", "A - ngoại hình", "A - mặc quần áo cảnh", "A - logic hành vi", "A và B - căng thẳng trong mối quan hệ".
+- Tập trung phân loại mạng lưới quan hệ của nhân vật: kiểu quan hệ, động lực cảm xúc, xung đột/lệ thuộc và chức năng tường thuật.
+- Tập trung vào việc phân loại trung tâm logic của nhân vật: tại sao nhân vật lại hành động như vậy, mong muốn, nỗi sợ hãi, điểm mấu chốt, thành kiến ​​​​nhận thức và những mâu thuẫn chính.
+- Tập trung trích xuất “cài đặt cụ thể”: chỉ đề cập đến những quy tắc, cơ chế thế giới, hệ thống tổ chức, vật phẩm, nghi lễ, điều cấm kỵ, hệ thống nghề nghiệp khác biệt với các mẫu văn bản web thông thường.
+- Chú trọng trích rút phong cách viết: góc nhìn trần thuật, nhịp điệu câu, thói quen đối thoại, hệ thống hình ảnh, nền tảng cảm xúc, những vi phạm cần tránh.
+- LorebookEntries là sản phẩm cuối cùng và số lượng có thể lớn. Tốt hơn là chia nhỏ nó ra hơn là nhét nó vào một mục lớn.
+- Mỗi lorebookEntries.content sử dụng các trường, danh sách và đoạn văn ngắn rõ ràng, phù hợp để đưa vào sổ thế giới chứ không phải đánh giá cao văn xuôi.
+- Khóa phải có ít nhất 2 ký tự, bao gồm tên người/bí danh/tên mối quan hệ/tên địa điểm/tên địa điểm, không được có từ kích hoạt một từ.
+- Chỉ xuất JSON, không có khối mã đánh dấu.`;
 
-  const user = `小说标题：${title || '未命名小说'}
-总切块数：${chunks.length}
-总字数：${chunks.reduce((sum, chunk) => sum + chunk.content.length, 0)}
-抽样策略：开头、前段、中段、后段、结尾多点抽样，供你进行结构化世界书拆分。
+ const user = `Tiêu đề tiểu thuyết: ${title || "Tiểu thuyết không tên"} Tổng số lần cắt: ${chunks.length} Tổng số từ: ${chunks.reduce((sum, chunk) => sum + chunk.content.length, 0)} Chiến lược lấy mẫu: lấy mẫu nhiều điểm ở đầu, trước, giữa, sau và cuối để bạn phân chia sổ thế giới có cấu trúc. ${sample} Vui lòng xuất JSON, phải tuân theo cấu trúc sau:
+{"summary": "Tóm tắt cốt truyện/thế giới quan tổng thể, 200-500 từ",
+ "thể loại": "loại",
+ "giọng điệu": "không khí kể chuyện",
+ "styleProfile": {"narration": "Quan điểm tường thuật, cấu trúc câu, mật độ thông tin",
+ "dialogue": "Phong cách đối thoại, thói quen nói chuyện của nhân vật",
+ "nhịp độ": "Nhịp điệu, điềm báo, phương pháp bùng nổ",
+ "hình ảnh": "Những hình ảnh, từ ngữ mang bầu không khí, mô tả cảm giác thường được sử dụng",
+ "điều cấm kỵ": ["Những phương pháp viết trái luật nên tránh khi viết tiếp"]},
+ "nhân vật": [{"name": "Tên nhân vật",
+ "vai trò": "định vị câu chuyện",
+ "logicHub": "Trung tâm logic của hành động nhân vật: mong muốn/sợ hãi/điểm mấu chốt/mâu thuẫn/mô hình hành vi",
+ "đặc điểm": ["Đặc điểm tính cách hoặc khả năng"],
+ "ngoại hình": "Các điểm nhận dạng ngoại hình và cơ thể",
+ "trang phục": [{"cảnh": "cảnh", "mô tả": "quần áo/thiết bị/trạng thái hình ảnh của cảnh này"}],
+ "mối quan hệ": [{"mục tiêu": "đối tượng", "loại": "loại mối quan hệ", "động": "mối quan hệ căng thẳng và chế độ tương tác", "bằng chứng": "cơ sở"}],
+ "bằng chứng": "Mô tả ngắn gọn về cơ sở ban đầu"}],
+ "Bản đồ mối quan hệ": [{"nguồn": "Nhân vật A", "mục tiêu": "Nhân vật B", "quan hệ": "Mối quan hệ", "conflictOrBond": "Xung đột/Ràng buộc", "storyFunction": "Chức năng tường thuật"}],
+ "Cài đặt duy nhất": [{"name": "Đặt tên", "danh mục": "Quy tắc/vật phẩm/hệ thống/khả năng/điều cấm kỵ/tổ chức/cơ chế thế giới", "description": "Đặt nội dung", "sự khác biệt": "Điều gì khiến nó khác với các mẫu văn bản web thông thường", "cách sử dụng": "Cách sử dụng văn bản hoặc sổ thế giới"}],
+ "địa điểm": [{"tên": "Tên địa điểm", "mô tả": "Đặc điểm địa điểm", "ý nghĩa": "Tầm quan trọng của câu chuyện"}],
+ "phe phái": [{"tên": "tên lực lượng", "mục đích": "mục đích/chức vụ", "thành viên": ["thành viên"]}],
+ "dòng thời gian": [{"order": 1, "event": "event", "impact": "impact"}],
+ "truyện truyền thuyếtEntries": [{"name": "Tên mục, ví dụ: A - bối cảnh cốt lõi / A - ngoại hình / A - trang phục cảnh / A và B - căng thẳng trong mối quan hệ / sự kiện nhất định - nhân quả / phong cách viết - đối thoại",
+ "phím": ["từ kích hoạt"],
+ "nội dung": "Văn bản của Sách Thế giới dựa trên trường và có thể được đưa vào trực tiếp. Chứa: định vị/điều kiện kích hoạt/sự kiện chính/ghi chú viết.",
+ "danh mục": "Nhân vật/Ngoại hình nhân vật/Quần áo nhân vật/Mối quan hệ nhân vật/Logic nhân vật/Sự kiện/Địa điểm/Sức mạnh/Cài đặt đặc biệt/Phong cách/Làm sạch",
+ "parent": "Người/địa điểm/sự kiện/khung cảnh thuộc về nó, có thể để trống",
+ "mục đích": "Mục đích của mục này trong Sách Thế giới"}],
+ "cleaningNotes": ["Các mẹo dọn dẹp như quảng cáo, ký tự bị cắt xén, thay thế chống trộm, định dạng bất thường, v.v. hoặc mảng trống"]}
 
-${sample}
+Yêu cầu phân chia:
+- Ít nhất hãy cố gắng tạo ra các nhân vật chính: cài đặt cốt lõi, ngoại hình, trạng thái trang phục/hình ảnh, logic hành vi và các mối quan hệ chính.
+- Tạo riêng cuốn sổ thế giới "Mối quan hệ nhân vật" cho các mối quan hệ quan trọng, không chỉ nhồi nhét vào mục nhân vật.
+- Các sự kiện quan trọng tạo ra những cuốn sổ thế giới “sự kiện” riêng biệt và ghi lại nguyên nhân, quá trình, kết quả và tác động.
+- Cài đặt đặc biệt phải giải thích "tại sao chúng không phải là mẫu phổ quát".
+- Phong cách viết phải tạo ra ít nhất một cuốn sổ thế giới riêng biệt cho lần sáng tạo tiếp theo để duy trì phong cách.`;
 
-请输出 JSON，必须符合以下结构：
-{
-  "summary": "整体剧情/世界观摘要，200-500字",
-  "genre": "类型",
-  "tone": "叙事氛围",
-  "styleProfile": {
-    "narration": "叙述视角、句式、信息密度",
-    "dialogue": "对白风格、角色说话习惯",
-    "pacing": "节奏、铺垫、爆点方式",
-    "imagery": "常用意象、氛围词、感官描写",
-    "taboos": ["续写时应避免的违和写法"]
-  },
-  "characters": [
-    {
-      "name": "人物名",
-      "role": "叙事定位",
-      "logicHub": "人物行动逻辑枢纽：欲望/恐惧/底线/矛盾/行为模式",
-      "traits": ["性格或能力特征"],
-      "appearance": "外貌与身体辨识点",
-      "outfits": [{ "scene": "场景", "description": "该场景着装/装备/视觉状态" }],
-      "relationships": [{ "target": "对象", "type": "关系类型", "dynamic": "关系张力与互动模式", "evidence": "依据" }],
-      "evidence": "原文依据简述"
-    }
-  ],
-  "relationshipMap": [
-    { "source": "人物A", "target": "人物B", "relation": "关系", "conflictOrBond": "冲突/羁绊", "storyFunction": "叙事功能" }
-  ],
-  "uniqueSettings": [
-    { "name": "设定名", "category": "规则/物品/制度/能力/禁忌/组织/世界机制", "description": "设定内容", "difference": "它不同于通用网文模板的地方", "usage": "写作或世界书使用方式" }
-  ],
-  "locations": [
-    { "name": "地点名", "description": "地点特征", "significance": "叙事重要性" }
-  ],
-  "factions": [
-    { "name": "势力名", "purpose": "目的/立场", "members": ["成员"] }
-  ],
-  "timeline": [
-    { "order": 1, "event": "事件", "impact": "影响" }
-  ],
-  "lorebookEntries": [
-    {
-      "name": "条目名，例如：A - 核心设定 / A - 外貌 / A - 场景着装 / A与B - 关系张力 / 某事件 - 因果 / 文风 - 对白",
-      "keys": ["触发词"],
-      "content": "世界书正文，字段化、可直接注入。包含：定位/触发条件/关键事实/写作注意。",
-      "category": "人物/人物外貌/人物着装/人物关系/人物逻辑/事件/地点/势力/特殊设定/文风/清洗",
-      "parent": "所属人物/地点/事件/设定，可为空",
-      "purpose": "该条目在世界书中的用途"
-    }
-  ],
-  "cleaningNotes": ["广告、乱码、防盗替换、异常格式等清洗提示，或空数组"]
-}
+ const safeOutputMaxTokens = Math.min(Math.max(Math.floor(outputMaxTokens || DEFAULT_NOVEL_OUTPUT_MAX_TOKENS), 4000), 300000);
+ const text = await callAIWithPrompt(system, user, {temperature: 0.7, max_tokens: safeOutputMaxTokens});
+ const parsed = parseAIJson(text) as NovelAnalysisResult | null;
+ if (!parsed) throw new Error("Nội dung do AI trả về không thể phân tích thành JSON, vui lòng thử lại hoặc giảm độ dài văn bản");
 
-拆分要求：
-- 主要人物至少尝试生成：核心设定、外貌、着装/视觉状态、行为逻辑、关键关系。
-- 重要关系单独生成“人物关系”世界书，不要只塞进人物条目。
-- 重要事件单独生成“事件”世界书，写清起因、经过、结果、影响。
-- 特殊设定必须说明“为什么不是通用模板”。
-- 文风必须单独生成至少 1 条世界书，用于后续创作保持风格。`;
-
-  const safeOutputMaxTokens = Math.min(Math.max(Math.floor(outputMaxTokens || DEFAULT_NOVEL_OUTPUT_MAX_TOKENS), 4000), 300000);
-  const text = await callAIWithPrompt(system, user, { temperature: 0.7, max_tokens: safeOutputMaxTokens });
-  const parsed = parseAIJson(text) as NovelAnalysisResult | null;
-  if (!parsed) throw new Error('AI 返回内容无法解析为 JSON，请重试或减少文本长度');
-
-  return normalizeAnalysis(parsed);
-}
+ return normalizeAnalysis(parsed);}
 
 /**
  * Streaming version of analyzeNovelText.
  * Returns the parsed analysis result and calls onChunk for real-time progress display.
  * The onChunk callback receives the accumulated text so far — suitable for showing
- * a "创作者无法介入" progress display.
+ * a "Người sáng tạo không thể can thiệp" progress display.
  */
-export async function analyzeNovelTextStreaming(
-  title: string,
-  chunks: NovelChunk[],
-  outputMaxTokens: number,
-  onChunk: StreamCallback,
-): Promise<NovelAnalysisResult> {
-  const sample = buildNovelSample(chunks);
-  if (!sample) throw new Error('请先输入或上传小说文本');
+export async function analyzeNovelTextStreaming(title: string,
+ chunks: NovelChunk[],
+ outputMaxTokens: number,
+ onChunk: StreamCallback,): Promise<NovelAnalysisResult> {const sample = buildNovelSample(chunks);
+ if (!sample) throw new Error("Vui lòng nhập hoặc tải lên văn bản tiểu thuyết trước");
 
-  const system = `你是"小说文本 → SillyTavern 世界书"的结构化拆书专家。你的目标不是写普通读后感，而是直接生成可导入世界书的素材库。
+ const system = `Bạn là chuyên gia trong việc giải nén có cấu trúc của "Văn bản tiểu thuyết → sổ thế giới SillyTavern". Mục tiêu của bạn không phải là viết một bài đánh giá chung mà là trực tiếp tạo ra một thư viện tài liệu có thể nhập vào world book.
 
-核心方向：
-- 按世界书结构拆分，不要混成一大段：人物归人物，人物外貌归人物外貌，人物不同场景着装归着装，人物关系归关系，人物逻辑枢纽归逻辑枢纽，事件归事件，地点归地点，势力归势力，特殊设定归特殊设定，文风归文风。
-- 允许做合理的创作型归纳：可以把文本中的隐含规律、关系张力、角色行为逻辑、叙事风格总结成可复用世界书，但必须基于节选证据，不要凭空加入未出现设定。
-- 对重要人物要拆成多条世界书：例如"A - 核心设定""A - 外貌""A - 场景着装""A - 行为逻辑""A与B - 关系张力"。
-- 着重梳理人物关系网络：关系类型、情感动力、冲突/依赖、叙事功能。
-- 着重梳理人物逻辑枢纽：角色为什么这样行动、欲望、恐惧、底线、认知偏差、关键矛盾。
-- 着重提取"特定设定"：只提不同于通用网文模板的独有规则、世界机制、组织制度、物品、仪式、禁忌、职业体系。
-- 着重提取文风：叙述视角、句式节奏、对白习惯、意象系统、情绪底色、需要避免的违和写法。
-- lorebookEntries 是最终产物，数量可以多，宁可拆细，也不要塞成一个大条目。
-- 每个 lorebookEntries.content 使用清晰字段、列表、短段落，适合世界书注入，不写散文鉴赏。
-- keys 至少 2 个字符，包含人名/别名/关系名/地点名/设定名，不要单字触发词。
-- 只输出 JSON，不要 markdown 代码块。`;
+Hướng cốt lõi:
+- Chia theo cấu trúc của sổ thế giới, không trộn thành một phần lớn: nhân vật thuộc về nhân vật, ngoại hình thuộc về nhân vật, trang phục của nhân vật trong các cảnh khác nhau thuộc về trang phục, mối quan hệ của nhân vật thuộc về mối quan hệ, trung tâm logic của nhân vật thuộc về trung tâm logic, sự kiện thuộc về sự kiện, địa điểm thuộc về địa điểm, lực lượng thuộc về lực lượng, bối cảnh đặc biệt thuộc về bối cảnh đặc biệt và phong cách viết thuộc về phong cách viết.
+- Cho phép tóm tắt sáng tạo hợp lý: các quy tắc ẩn, sự căng thẳng trong mối quan hệ, logic hành vi nhân vật và phong cách kể chuyện trong văn bản có thể được tóm tắt thành một cuốn sổ thế giới có thể sử dụng lại, nhưng phải dựa trên bằng chứng được trích xuất và không thêm các bối cảnh chưa từng nghe thấy.
+- Các nhân vật quan trọng nên được chia thành nhiều sổ thế giới: ví dụ: "A - bối cảnh cốt lõi", "A - ngoại hình", "A - mặc quần áo cảnh", "A - logic hành vi", "A và B - căng thẳng trong mối quan hệ".
+- Tập trung phân loại mạng lưới quan hệ của nhân vật: kiểu quan hệ, động lực cảm xúc, xung đột/lệ thuộc và chức năng tường thuật.
+- Tập trung vào việc phân loại trung tâm logic của nhân vật: tại sao nhân vật lại hành động như vậy, mong muốn, nỗi sợ hãi, điểm mấu chốt, thành kiến ​​​​nhận thức và những mâu thuẫn chính.
+- Tập trung trích xuất “cài đặt cụ thể”: chỉ đề cập đến những quy tắc, cơ chế thế giới, hệ thống tổ chức, vật phẩm, nghi lễ, điều cấm kỵ, hệ thống nghề nghiệp khác biệt với các mẫu văn bản web thông thường.
+- Chú trọng trích rút phong cách viết: góc nhìn trần thuật, nhịp điệu câu, thói quen đối thoại, hệ thống hình ảnh, nền tảng cảm xúc, những vi phạm cần tránh.
+- LorebookEntries là sản phẩm cuối cùng và số lượng có thể lớn. Tốt hơn là chia nhỏ nó ra hơn là nhét nó vào một mục lớn.
+- Mỗi lorebookEntries.content sử dụng các trường, danh sách và đoạn văn ngắn rõ ràng, phù hợp để đưa vào sổ thế giới chứ không phải đánh giá cao văn xuôi.
+- Khóa phải có ít nhất 2 ký tự, bao gồm tên người/bí danh/tên mối quan hệ/tên địa điểm/tên địa điểm, không được có từ kích hoạt một từ.
+- Chỉ xuất JSON, không có khối mã đánh dấu.`;
 
-  const user = `小说标题：${title || '未命名小说'}
-总切块数：${chunks.length}
-总字数：${chunks.reduce((sum, chunk) => sum + chunk.content.length, 0)}
-抽样策略：开头、前段、中段、后段、结尾多点抽样，供你进行结构化世界书拆分。
+ const user = `Tiêu đề tiểu thuyết: ${title || "Tiểu thuyết không tên"} Tổng số lần cắt: ${chunks.length} Tổng số từ: ${chunks.reduce((sum, chunk) => sum + chunk.content.length, 0)} Chiến lược lấy mẫu: lấy mẫu nhiều điểm ở đầu, trước, giữa, sau và cuối để bạn phân chia sổ thế giới có cấu trúc. ${sample} Vui lòng xuất JSON, phải tuân theo cấu trúc sau:
+{"summary": "Tóm tắt cốt truyện/thế giới quan tổng thể, 200-500 từ",
+ "thể loại": "loại",
+ "giọng điệu": "không khí kể chuyện",
+ "styleProfile": {"narration": "Quan điểm tường thuật, cấu trúc câu, mật độ thông tin",
+ "dialogue": "Phong cách đối thoại, thói quen nói chuyện của nhân vật",
+ "nhịp độ": "Nhịp điệu, điềm báo, phương pháp bùng nổ",
+ "hình ảnh": "Những hình ảnh, từ ngữ mang bầu không khí, mô tả cảm giác thường được sử dụng",
+ "điều cấm kỵ": ["Những phương pháp viết trái luật nên tránh khi viết tiếp"]},
+ "nhân vật": [{"name": "Tên nhân vật",
+ "vai trò": "định vị câu chuyện",
+ "logicHub": "Trung tâm logic của hành động nhân vật: mong muốn/sợ hãi/điểm mấu chốt/mâu thuẫn/mô hình hành vi",
+ "đặc điểm": ["Đặc điểm tính cách hoặc khả năng"],
+ "ngoại hình": "Các điểm nhận dạng ngoại hình và cơ thể",
+ "trang phục": [{"cảnh": "cảnh", "mô tả": "quần áo/thiết bị/trạng thái hình ảnh của cảnh này"}],
+ "mối quan hệ": [{"mục tiêu": "đối tượng", "loại": "loại mối quan hệ", "động": "mối quan hệ căng thẳng và chế độ tương tác", "bằng chứng": "cơ sở"}],
+ "bằng chứng": "Mô tả ngắn gọn về cơ sở ban đầu"}],
+ "Bản đồ mối quan hệ": [{"nguồn": "Nhân vật A", "mục tiêu": "Nhân vật B", "quan hệ": "Mối quan hệ", "conflictOrBond": "Xung đột/Ràng buộc", "storyFunction": "Chức năng tường thuật"}],
+ "Cài đặt duy nhất": [{"name": "Đặt tên", "danh mục": "Quy tắc/vật phẩm/hệ thống/khả năng/điều cấm kỵ/tổ chức/cơ chế thế giới", "description": "Đặt nội dung", "sự khác biệt": "Điều gì khiến nó khác với các mẫu văn bản web thông thường", "cách sử dụng": "Cách sử dụng văn bản hoặc sổ thế giới"}],
+ "địa điểm": [{"tên": "Tên địa điểm", "mô tả": "Đặc điểm địa điểm", "ý nghĩa": "Tầm quan trọng của câu chuyện"}],
+ "phe phái": [{"tên": "tên lực lượng", "mục đích": "mục đích/chức vụ", "thành viên": ["thành viên"]}],
+ "dòng thời gian": [{"order": 1, "event": "event", "impact": "impact"}],
+ "truyện truyền thuyếtEntries": [{"name": "Tên mục, ví dụ: A - bối cảnh cốt lõi / A - ngoại hình / A - trang phục cảnh / A và B - căng thẳng trong mối quan hệ / sự kiện nhất định - nhân quả / phong cách viết - đối thoại",
+ "phím": ["từ kích hoạt"],
+ "nội dung": "Văn bản của Sách Thế giới dựa trên trường và có thể được đưa vào trực tiếp. Chứa: định vị/điều kiện kích hoạt/sự kiện chính/ghi chú viết.",
+ "danh mục": "Nhân vật/Ngoại hình nhân vật/Quần áo nhân vật/Mối quan hệ nhân vật/Logic nhân vật/Sự kiện/Địa điểm/Sức mạnh/Cài đặt đặc biệt/Phong cách/Làm sạch",
+ "parent": "Người/địa điểm/sự kiện/khung cảnh thuộc về nó, có thể để trống",
+ "mục đích": "Mục đích của mục này trong Sách Thế giới"}],
+ "cleaningNotes": ["Các mẹo dọn dẹp như quảng cáo, ký tự bị cắt xén, thay thế chống trộm, định dạng bất thường, v.v. hoặc mảng trống"]}
 
-${sample}
+Yêu cầu phân chia:
+- Ít nhất hãy cố gắng tạo ra các nhân vật chính: cài đặt cốt lõi, ngoại hình, trạng thái trang phục/hình ảnh, logic hành vi và các mối quan hệ chính.
+- Tạo riêng cuốn sổ thế giới "Mối quan hệ nhân vật" cho các mối quan hệ quan trọng, không chỉ nhồi nhét vào mục nhân vật.
+- Các sự kiện quan trọng tạo ra những cuốn sổ thế giới “sự kiện” riêng biệt và ghi lại nguyên nhân, quá trình, kết quả và tác động.
+- Cài đặt đặc biệt phải giải thích "tại sao chúng không phải là mẫu phổ quát".
+- Phong cách viết phải tạo ra ít nhất một cuốn sổ thế giới riêng biệt cho lần sáng tạo tiếp theo để duy trì phong cách.`;
 
-请输出 JSON，必须符合以下结构：
-{
-  "summary": "整体剧情/世界观摘要，200-500字",
-  "genre": "类型",
-  "tone": "叙事氛围",
-  "styleProfile": {
-    "narration": "叙述视角、句式、信息密度",
-    "dialogue": "对白风格、角色说话习惯",
-    "pacing": "节奏、铺垫、爆点方式",
-    "imagery": "常用意象、氛围词、感官描写",
-    "taboos": ["续写时应避免的违和写法"]
-  },
-  "characters": [
-    {
-      "name": "人物名",
-      "role": "叙事定位",
-      "logicHub": "人物行动逻辑枢纽：欲望/恐惧/底线/矛盾/行为模式",
-      "traits": ["性格或能力特征"],
-      "appearance": "外貌与身体辨识点",
-      "outfits": [{ "scene": "场景", "description": "该场景着装/装备/视觉状态" }],
-      "relationships": [{ "target": "对象", "type": "关系类型", "dynamic": "关系张力与互动模式", "evidence": "依据" }],
-      "evidence": "原文依据简述"
-    }
-  ],
-  "relationshipMap": [
-    { "source": "人物A", "target": "人物B", "relation": "关系", "conflictOrBond": "冲突/羁绊", "storyFunction": "叙事功能" }
-  ],
-  "uniqueSettings": [
-    { "name": "设定名", "category": "规则/物品/制度/能力/禁忌/组织/世界机制", "description": "设定内容", "difference": "它不同于通用网文模板的地方", "usage": "写作或世界书使用方式" }
-  ],
-  "locations": [
-    { "name": "地点名", "description": "地点特征", "significance": "叙事重要性" }
-  ],
-  "factions": [
-    { "name": "势力名", "purpose": "目的/立场", "members": ["成员"] }
-  ],
-  "timeline": [
-    { "order": 1, "event": "事件", "impact": "影响" }
-  ],
-  "lorebookEntries": [
-    {
-      "name": "条目名，例如：A - 核心设定 / A - 外貌 / A - 场景着装 / A与B - 关系张力 / 某事件 - 因果 / 文风 - 对白",
-      "keys": ["触发词"],
-      "content": "世界书正文，字段化、可直接注入。包含：定位/触发条件/关键事实/写作注意。",
-      "category": "人物/人物外貌/人物着装/人物关系/人物逻辑/事件/地点/势力/特殊设定/文风/清洗",
-      "parent": "所属人物/地点/事件/设定，可为空",
-      "purpose": "该条目在世界书中的用途"
-    }
-  ],
-  "cleaningNotes": ["广告、乱码、防盗替换、异常格式等清洗提示，或空数组"]
-}
+ const safeOutputMaxTokens = Math.min(Math.max(Math.floor(outputMaxTokens || DEFAULT_NOVEL_OUTPUT_MAX_TOKENS), 4000), 300000);
+ const text = await callAIWithPromptStreaming(system, user, onChunk, {temperature: 0.7, max_tokens: safeOutputMaxTokens});
+ const parsed = parseAIJson(text) as NovelAnalysisResult | null;
+ if (!parsed) throw new Error("Nội dung do AI trả về không thể phân tích thành JSON, vui lòng thử lại hoặc giảm độ dài văn bản");
 
-拆分要求：
-- 主要人物至少尝试生成：核心设定、外貌、着装/视觉状态、行为逻辑、关键关系。
-- 重要关系单独生成"人物关系"世界书，不要只塞进人物条目。
-- 重要事件单独生成"事件"世界书，写清起因、经过、结果、影响。
-- 特殊设定必须说明"为什么不是通用模板"。
-- 文风必须单独生成至少 1 条世界书，用于后续创作保持风格。`;
+ return normalizeAnalysis(parsed);}
 
-  const safeOutputMaxTokens = Math.min(Math.max(Math.floor(outputMaxTokens || DEFAULT_NOVEL_OUTPUT_MAX_TOKENS), 4000), 300000);
-  const text = await callAIWithPromptStreaming(system, user, onChunk, { temperature: 0.7, max_tokens: safeOutputMaxTokens });
-  const parsed = parseAIJson(text) as NovelAnalysisResult | null;
-  if (!parsed) throw new Error('AI 返回内容无法解析为 JSON，请重试或减少文本长度');
+function normalizeAnalysis(parsed: Partial<NovelAnalysisResult>): NovelAnalysisResult {return {summary: parsed.summary || '',
+ genre: parsed.genre || '',
+ tone: parsed.tone || '',
+ styleProfile: {narration: parsed.styleProfile?.narration || '',
+ dialogue: parsed.styleProfile?.dialogue || '',
+ pacing: parsed.styleProfile?.pacing || '',
+ imagery: parsed.styleProfile?.imagery || '',
+ taboos: Array.isArray(parsed.styleProfile?.taboos)? parsed.styleProfile.taboos: [],},
+ characters: Array.isArray(parsed.characters)? parsed.characters: [],
+ relationshipMap: Array.isArray(parsed.relationshipMap)? parsed.relationshipMap: [],
+ uniqueSettings: Array.isArray(parsed.uniqueSettings)? parsed.uniqueSettings: [],
+ locations: Array.isArray(parsed.locations)? parsed.locations: [],
+ factions: Array.isArray(parsed.factions)? parsed.factions: [],
+ timeline: Array.isArray(parsed.timeline)? parsed.timeline: [],
+ lorebookEntries: Array.isArray(parsed.lorebookEntries)? parsed.lorebookEntries: [],
+ cleaningNotes: Array.isArray(parsed.cleaningNotes)? parsed.cleaningNotes: [],};}
 
-  return normalizeAnalysis(parsed);
-}
+export function exportAnalysisAsJson(title: string, chunks: NovelChunk[], analysis: NovelAnalysisResult): string {return JSON.stringify({title,
+ generatedAt: new Date().toISOString(),
+ chunkCount: chunks.length,
+ totalChars: chunks.reduce((sum, chunk) => sum + chunk.content.length, 0),
+ analysis,}, null, 2);}
 
-function normalizeAnalysis(parsed: Partial<NovelAnalysisResult>): NovelAnalysisResult {
-  return {
-    summary: parsed.summary || '',
-    genre: parsed.genre || '',
-    tone: parsed.tone || '',
-    styleProfile: {
-      narration: parsed.styleProfile?.narration || '',
-      dialogue: parsed.styleProfile?.dialogue || '',
-      pacing: parsed.styleProfile?.pacing || '',
-      imagery: parsed.styleProfile?.imagery || '',
-      taboos: Array.isArray(parsed.styleProfile?.taboos) ? parsed.styleProfile.taboos : [],
-    },
-    characters: Array.isArray(parsed.characters) ? parsed.characters : [],
-    relationshipMap: Array.isArray(parsed.relationshipMap) ? parsed.relationshipMap : [],
-    uniqueSettings: Array.isArray(parsed.uniqueSettings) ? parsed.uniqueSettings : [],
-    locations: Array.isArray(parsed.locations) ? parsed.locations : [],
-    factions: Array.isArray(parsed.factions) ? parsed.factions : [],
-    timeline: Array.isArray(parsed.timeline) ? parsed.timeline : [],
-    lorebookEntries: Array.isArray(parsed.lorebookEntries) ? parsed.lorebookEntries : [],
-    cleaningNotes: Array.isArray(parsed.cleaningNotes) ? parsed.cleaningNotes : [],
-  };
-}
+export function analysisToLorebookEntries(analysis: NovelAnalysisResult): LorebookEntry[] {return analysis.lorebookEntries.map((entry, index) => {const category = entry.category || "vật liệu";
+ const lore = createEmptyLorebookEntry();
+ lore.name = entry.name || `Tài liệu mới lạ ${index + 1}`;
+ lore.comment = `[Phân tích tiểu thuyết/${category}]${entry.parent? ` ${entry.parent}`: ''}${entry.purpose? ` - ${entry.purpose}`: ''}`;
+ lore.keys = Array.isArray(entry.keys)? entry.keys.map((key) => key.trim()).filter((key) => key.length >= 2): [];
+ lore.content = entry.content || '';
+ lore.constant = category === "phong cách viết" || category === "Cài đặt đặc biệt";
+ lore.enabled = true;
+ lore.position = category === "phong cách viết" || category === "Cài đặt đặc biệt"? 'before_char': 'after_char';
+ lore.insertion_order = categoryOrder(category, index);
+ lore.priority = categoryPriority(category);
+ lore.prevent_recursion = true;
+ lore.match_whole_words = true;
+ return lore;}).filter((entry) => entry.content.trim());}
 
-export function exportAnalysisAsJson(title: string, chunks: NovelChunk[], analysis: NovelAnalysisResult): string {
-  return JSON.stringify({
-    title,
-    generatedAt: new Date().toISOString(),
-    chunkCount: chunks.length,
-    totalChars: chunks.reduce((sum, chunk) => sum + chunk.content.length, 0),
-    analysis,
-  }, null, 2);
-}
+function categoryOrder(category: string, index: number): number {const base: Record<string, number> = {"phong cách viết": 80,
+ "Cài đặt đặc biệt": 120,
+ "nhân vật": 300,
+ "logic nhân vật": 320,
+ "Ngoại hình nhân vật": 340,
+ "Quần áo nhân vật": 360,
+ "Mối quan hệ nhân vật": 380,
+ "Địa điểm": 450,
+ "quyền lực": 500,
+ "sự kiện": 650,
+ "Lau dọn": 900,};
+ return (base[category]?? 550) + index;}
 
-export function analysisToLorebookEntries(analysis: NovelAnalysisResult): LorebookEntry[] {
-  return analysis.lorebookEntries.map((entry, index) => {
-    const category = entry.category || '素材';
-    const lore = createEmptyLorebookEntry();
-    lore.name = entry.name || `小说素材 ${index + 1}`;
-    lore.comment = `[小说分析/${category}]${entry.parent ? ` ${entry.parent}` : ''}${entry.purpose ? ` - ${entry.purpose}` : ''}`;
-    lore.keys = Array.isArray(entry.keys)
-      ? entry.keys.map((key) => key.trim()).filter((key) => key.length >= 2)
-      : [];
-    lore.content = entry.content || '';
-    lore.constant = category === '文风' || category === '特殊设定';
-    lore.enabled = true;
-    lore.position = category === '文风' || category === '特殊设定' ? 'before_char' : 'after_char';
-    lore.insertion_order = categoryOrder(category, index);
-    lore.priority = categoryPriority(category);
-    lore.prevent_recursion = true;
-    lore.match_whole_words = true;
-    return lore;
-  }).filter((entry) => entry.content.trim());
-}
+function categoryPriority(category: string): number {const priority: Record<string, number> = {"phong cách viết": 95,
+ "Cài đặt đặc biệt": 90,
+ "nhân vật": 85,
+ "logic nhân vật": 85,
+ "Mối quan hệ nhân vật": 82,
+ "Ngoại hình nhân vật": 75,
+ "Quần áo nhân vật": 70,
+ "sự kiện": 70,
+ "Địa điểm": 60,
+ "quyền lực": 60,};
+ return priority[category]?? 50;}
 
-function categoryOrder(category: string, index: number): number {
-  const base: Record<string, number> = {
-    文风: 80,
-    特殊设定: 120,
-    人物: 300,
-    人物逻辑: 320,
-    人物外貌: 340,
-    人物着装: 360,
-    人物关系: 380,
-    地点: 450,
-    势力: 500,
-    事件: 650,
-    清洗: 900,
-  };
-  return (base[category] ?? 550) + index;
-}
+export function saveAnalysisLorebookImport(title: string, analysis: NovelAnalysisResult): LorebookEntry[] {const entries = analysisToLorebookEntries(analysis);
+ sessionStorage.setItem(NOVEL_LOREBOOK_IMPORT_KEY, JSON.stringify({title,
+ entries,
+ createdAt: new Date().toISOString(),}));
+ return entries;}
 
-function categoryPriority(category: string): number {
-  const priority: Record<string, number> = {
-    文风: 95,
-    特殊设定: 90,
-    人物: 85,
-    人物逻辑: 85,
-    人物关系: 82,
-    人物外貌: 75,
-    人物着装: 70,
-    事件: 70,
-    地点: 60,
-    势力: 60,
-  };
-  return priority[category] ?? 50;
-}
+export function consumeAnalysisLorebookImport(): {title: string; entries: LorebookEntry[]} | null {const raw = sessionStorage.getItem(NOVEL_LOREBOOK_IMPORT_KEY);
+ if (!raw) return null;
+ sessionStorage.removeItem(NOVEL_LOREBOOK_IMPORT_KEY);
 
-export function saveAnalysisLorebookImport(title: string, analysis: NovelAnalysisResult): LorebookEntry[] {
-  const entries = analysisToLorebookEntries(analysis);
-  sessionStorage.setItem(NOVEL_LOREBOOK_IMPORT_KEY, JSON.stringify({
-    title,
-    entries,
-    createdAt: new Date().toISOString(),
-  }));
-  return entries;
-}
-
-export function consumeAnalysisLorebookImport(): { title: string; entries: LorebookEntry[] } | null {
-  const raw = sessionStorage.getItem(NOVEL_LOREBOOK_IMPORT_KEY);
-  if (!raw) return null;
-  sessionStorage.removeItem(NOVEL_LOREBOOK_IMPORT_KEY);
-
-  try {
-    const parsed = JSON.parse(raw) as { title?: string; entries?: LorebookEntry[] };
-    if (!Array.isArray(parsed.entries)) return null;
-    return {
-      title: parsed.title || '',
-      entries: parsed.entries,
-    };
-  } catch {
-    return null;
-  }
-}
+ try {const parsed = JSON.parse(raw) as {title?: string; entries?: LorebookEntry[]};
+ if (!Array.isArray(parsed.entries)) return null;
+ return {title: parsed.title || '',
+ entries: parsed.entries,};} catch {return null;}}
